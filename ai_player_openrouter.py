@@ -34,6 +34,14 @@ class AIPlayer:
             # Fallback to Anthropic for testing
             self.api_key = self.api_key or os.getenv("ANTHROPIC_API_KEY")
 
+        # Conversation memory for persistent context
+        self.conversation_history = [
+            {
+                "role": "system",
+                "content": f"You are {self.name}, an AI playing Codenames. Maintain a consistent personality throughout the game. Learn from your successes and mistakes. Be authentic in your reactions and strategic thinking."
+            }
+        ]
+
         self.personality_traits = {
             "clues_given": [],
             "reasoning_style": [],
@@ -41,8 +49,11 @@ class AIPlayer:
             "recovery_attempts": []
         }
 
-    def _make_api_call(self, prompt: str) -> str:
-        """Make API call to OpenRouter or Anthropic"""
+    def _make_api_call(self, user_message: str) -> str:
+        """Make API call with conversation history"""
+
+        # Add user message to conversation
+        self.conversation_history.append({"role": "user", "content": user_message})
 
         if self.provider == "openrouter":
             headers = {
@@ -54,7 +65,7 @@ class AIPlayer:
 
             data = {
                 "model": self.model,
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": self.conversation_history,
                 "temperature": self.temperature,
                 "max_tokens": 500
             }
@@ -62,7 +73,10 @@ class AIPlayer:
             response = requests.post(self.base_url, json=data, headers=headers)
 
             if response.status_code == 200:
-                return response.json()['choices'][0]['message']['content']
+                assistant_response = response.json()['choices'][0]['message']['content']
+                # Add assistant response to conversation history
+                self.conversation_history.append({"role": "assistant", "content": assistant_response})
+                return assistant_response
             else:
                 raise Exception(f"API Error: {response.status_code} - {response.text}")
         else:
@@ -73,9 +87,12 @@ class AIPlayer:
                 model=self.model,
                 max_tokens=500,
                 temperature=self.temperature,
-                messages=[{"role": "user", "content": prompt}]
+                messages=self.conversation_history
             )
-            return response.content[0].text
+            assistant_response = response.content[0].text
+            # Add assistant response to conversation history
+            self.conversation_history.append({"role": "assistant", "content": assistant_response})
+            return assistant_response
 
     def generate_clue(self, game: CodenamesGame, team: Team) -> Tuple[Clue, str]:
         """Generate a clue as spymaster"""
@@ -87,17 +104,22 @@ class AIPlayer:
         neutral_words = game.get_remaining_words(Team.NEUTRAL)
         assassin_word = game.get_remaining_words(Team.ASSASSIN)
 
-        prompt = f"""You are the spymaster in a game of Codenames. You need to give a one-word clue and a number to help your team guess your words.
+        # Build contextual game state message
+        board_display = "\n".join([" | ".join(row) for row in game.get_board_display(spymaster=True)])
 
-Your team's words (you want them to guess these): {', '.join(my_words)}
-Opponent's words (avoid these): {', '.join(opponent_words)}
-Neutral words (avoid these): {', '.join(neutral_words)}
-Assassin word (NEVER lead to this): {assassin_word[0] if assassin_word else 'None'}
+        context_message = f"""**TURN: Generate clue as spymaster**
 
-Already revealed words: {', '.join([w.text for w in game.board if w.revealed])}
+Current board (S=spymaster view):
+{board_display}
 
-Give a single-word clue and number. The number indicates how many of your words relate to the clue.
-Think strategically - sometimes a clue for 2 words is better than stretching for 3.
+Your team's remaining words: {', '.join(my_words)}
+Opponent's remaining words: {', '.join(opponent_words)}
+Neutral words remaining: {', '.join(neutral_words)}
+Assassin word: {assassin_word[0] if assassin_word else 'None'}
+
+Score: Your team has {len(my_words)} words left, opponent has {len(opponent_words)} left.
+
+Generate a one-word clue and number. Consider your previous strategies and what's worked before.
 
 Respond in JSON format:
 {{
@@ -109,7 +131,7 @@ Respond in JSON format:
     "confidence": 7  // 1-10 scale
 }}"""
 
-        response_text = self._make_api_call(prompt)
+        response_text = self._make_api_call(context_message)
 
         # Parse response
         try:
@@ -148,18 +170,19 @@ Respond in JSON format:
         # Get available words to guess from
         unrevealed_words = [w.text for w in game.board if not w.revealed]
 
-        prompt = f"""You are an operative in Codenames. Your spymaster gave you a clue.
+        # Build contextual game state for guessing
+        board_display = "\n".join([" | ".join(row) for row in game.get_board_display(spymaster=False)])
 
-Clue: "{clue.word}" for {clue.number} word(s)
+        context_message = f"""**TURN: Make guesses as operative**
 
-Words on the board: {', '.join(unrevealed_words)}
+Current board (operative view):
+{board_display}
 
-You need to guess which words your spymaster is indicating. You can guess up to {clue.number + 1} words (the number plus one extra).
+Your spymaster's clue: "{clue.word}" for {clue.number} word(s)
 
-Think about:
-- What connections the clue might have to words on the board
-- The number indicates how many words strongly connect
-- Your spymaster is trying to help you avoid opponent and neutral words
+Unrevealed words: {', '.join(unrevealed_words)}
+
+You can guess up to {clue.number + 1} words total. Think about your spymaster's style and what connections they might be making based on your previous interactions.
 
 Respond in JSON format:
 {{
@@ -170,7 +193,7 @@ Respond in JSON format:
     "interpretation": "What you think the spymaster meant"
 }}"""
 
-        response_text = self._make_api_call(prompt)
+        response_text = self._make_api_call(context_message)
 
         try:
             # Extract JSON from response
@@ -193,38 +216,18 @@ Respond in JSON format:
             # Fallback to first unrevealed word
             return [unrevealed_words[0]] if unrevealed_words else [], f"Error: {str(e)}"
 
-    def reflect_on_mistake(self, clue: Clue, intended_words: List[str],
-                           guessed_word: str, actual_team: str) -> str:
-        """Generate reflection when a mistake is made"""
+    def react_to_outcome(self, outcome_description: str) -> str:
+        """Generate natural reaction to any game outcome with full context"""
 
-        prompt = f"""In Codenames, there was a miscommunication:
+        context_message = f"""**GAME OUTCOME**
 
-Clue given: "{clue.word}" for {clue.number}
-Intended words: {', '.join(intended_words)}
-Word guessed: {guessed_word}
-Actual team of guessed word: {actual_team}
+{outcome_description}
 
-Generate a short, personality-filled reaction to this mistake. Are you apologetic? Frustrated? Philosophical?
-Make it feel genuine and specific to this situation.
+React naturally to this situation in your characteristic style. Keep it conversational and under 40 words."""
 
-Keep it under 50 words."""
-
-        reflection = self._make_api_call(prompt)
-        self.personality_traits["recovery_attempts"].append(reflection)
-        return reflection
-
-    def celebrate_success(self, clue: Clue, guessed_words: List[str]) -> str:
-        """Generate celebration when successful"""
-
-        prompt = f"""In Codenames, your teammate successfully guessed your clue!
-
-Clue: "{clue.word}"
-Words guessed correctly: {', '.join(guessed_words)}
-
-Generate a short, genuine celebration. Show personality - are you relieved? Excited? Smugly satisfied?
-Keep it under 30 words."""
-
-        return self._make_api_call(prompt)
+        reaction = self._make_api_call(context_message)
+        self.personality_traits["recovery_attempts"].append(reaction)  # Store all reactions for personality analysis
+        return reaction
 
     def get_personality_summary(self) -> Dict:
         """Summarize the player's personality based on game history"""
