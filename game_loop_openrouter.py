@@ -123,20 +123,22 @@ class ContinuousGameLoop:
 
                 continue_turn, result = game.make_guess(guess)
 
-                # Generate personality responses
+                # Generate natural reactions to game outcomes
                 if "Correct" in result:
-                    celebration = spymaster.celebrate_success(clue, [guess])
-                    self.state.last_action = celebration
+                    outcome = f"Your clue '{clue.word}' worked! Your teammate guessed '{guess}' correctly. {result}"
+                    reaction = spymaster.react_to_outcome(outcome)
+                    self.state.last_action = reaction
                 elif "ASSASSIN" in result or "wins" in result:
-                    self.state.last_action = result
+                    outcome = f"Game over! Your clue '{clue.word}' led to: {result}"
+                    reaction = spymaster.react_to_outcome(outcome)
+                    self.state.last_action = reaction
                     return False  # Game over
                 else:
                     # Wrong guess
                     if not continue_turn:
-                        reflection = spymaster.reflect_on_mistake(
-                            clue, guesses, guess, result.split("was")[1].split(".")[0].strip()
-                        )
-                        self.state.last_action = reflection
+                        outcome = f"Your clue '{clue.word}' led your teammate to guess '{guess}', but {result}"
+                        reaction = spymaster.react_to_outcome(outcome)
+                        self.state.last_action = reaction
                         self.notify_visualizers()
                         await asyncio.sleep(2)
                         break
