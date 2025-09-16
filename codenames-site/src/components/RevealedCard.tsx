@@ -5,7 +5,7 @@ import blueSpyImg from '../assets/blue_spy.jpeg';
 import neutralImg from '../assets/neutral.png';
 import assassinImg from '../assets/assassin.jpeg'
 
-type RevealedKind = 'red' | 'blue' | 'neutral' | 'assassin';
+export type RevealedKind = 'red' | 'blue' | 'neutral' | 'assassin';
 
 export function RevealedCard({ kind }: { kind: RevealedKind }) {
   return <Card>
