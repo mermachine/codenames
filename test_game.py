@@ -1,22 +1,25 @@
 """
-Test script for Codenames AI vs AI
-Run this to see if the basic game loop works
+Test script for Codenames AI vs AI using OpenRouter
+Run this to see if the basic game loop works with real AI
 """
 
 import asyncio
 import os
-from game_loop import ContinuousGameLoop
+from game_loop_openrouter import ContinuousGameLoop
 
 async def test_single_game():
     """Test just one game with detailed output"""
 
     # Check for API key
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        print("ERROR: Please set ANTHROPIC_API_KEY environment variable")
-        print("You can set it with: export ANTHROPIC_API_KEY='your-key-here'")
+    if not os.getenv("OPENROUTER_API_KEY"):
+        print("ERROR: Please set OPENROUTER_API_KEY environment variable")
+        print("You can set it with: export OPENROUTER_API_KEY='your-key-here'")
+        print()
+        print("Alternatively, you can test without API calls by running:")
+        print("  python test_mock.py")
         return
 
-    print("Starting Codenames AI vs AI test...")
+    print("Starting Codenames AI vs AI test with OpenRouter...")
     print("=" * 50)
 
     def detailed_callback(state):
