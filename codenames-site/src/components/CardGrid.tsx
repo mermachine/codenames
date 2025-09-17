@@ -17,12 +17,8 @@ function CardCell({ state }: { state: CardState }) {
   }
 }
 
-export function CardGrid({ states }: { states: CardState[][] }) {
-  <div className="grid grid-cols-5 gap-4">
-    {states.flatMap((sts) =>
-      sts.map((st) =>
-        CardCell({ state: st })))
-    }
-  </div>
-
+export function CardGrid({ states }: { states: CardState[] }) {
+  return <div className="grid grid-cols-5 gap-4">
+    {states.flatMap((state) => CardCell({ state }))}
+  </div>;
 }
