@@ -71,7 +71,7 @@ function CodenamesGame() {
   const getBoardStates = (): CardState[] => {
     // If no board data, create placeholder cards
     if (!gameState?.board) {
-      return Array.from({ length: 25 }, (_, i) => ({
+      return Array.from({ length: 25 }, () => ({
         word: '•••',
         kind: 'neutral' as const,
         isRevealed: false
