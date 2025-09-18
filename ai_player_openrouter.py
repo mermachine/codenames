@@ -52,6 +52,12 @@ class AIPlayer:
     def _make_api_call(self, user_message: str) -> str:
         """Make API call with conversation history"""
 
+        # Limit conversation history to prevent token overflow
+        MAX_HISTORY = 10  # Keep last 10 messages + system prompt
+        if len(self.conversation_history) > MAX_HISTORY + 1:
+            # Keep system prompt (first message) + last N messages
+            self.conversation_history = [self.conversation_history[0]] + self.conversation_history[-(MAX_HISTORY):]
+
         # Add user message to conversation
         self.conversation_history.append({"role": "user", "content": user_message})
 
@@ -299,3 +305,35 @@ def create_player(model_key: str, provider: str = "openrouter") -> AIPlayer:
         temperature=config["temperature"],
         provider=provider
     )
+
+def create_spymaster(model_key: str, team_color: str, provider: str = "openrouter") -> AIPlayer:
+    """Create an AI player specifically for spymaster role"""
+    config = MODEL_CONFIGS.get(model_key, MODEL_CONFIGS["claude-sonnet-3.5"])
+    player = AIPlayer(
+        model=config["model"],
+        name=f"{config['name']} ({team_color} Spymaster)",
+        temperature=config["temperature"],
+        provider=provider
+    )
+    # Override system prompt for spymaster
+    player.conversation_history[0] = {
+        "role": "system",
+        "content": f"You are the {team_color} team spymaster in Codenames. You can see all words and their teams. Give strategic clues to help your operative guess your team's words while avoiding opponent words and the assassin. Be creative and strategic with your clues."
+    }
+    return player
+
+def create_guesser(model_key: str, team_color: str, provider: str = "openrouter") -> AIPlayer:
+    """Create an AI player specifically for guesser role"""
+    config = MODEL_CONFIGS.get(model_key, MODEL_CONFIGS["claude-sonnet-3.5"])
+    player = AIPlayer(
+        model=config["model"],
+        name=f"{config['name']} ({team_color} Guesser)",
+        temperature=config["temperature"],
+        provider=provider
+    )
+    # Override system prompt for guesser
+    player.conversation_history[0] = {
+        "role": "system",
+        "content": f"You are the {team_color} team operative in Codenames. You cannot see which words belong to which team. Interpret your spymaster's clues to guess the correct words. Think carefully about word associations and be strategic with your guesses."
+    }
+    return player

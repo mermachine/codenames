@@ -44,3 +44,24 @@ Thumbs.db
 .claude/
 CLAUDE.md
 claude.md
+
+# Personal notes and fix documentation
+FIXES_APPLIED.md
+*.md.bak
+
+# API Keys - NEVER commit these
+*api_key*
+*API_KEY*
+
+# Test and debug scripts (one-time use)
+test_api_*.py
+test_game_minimal.py
+test_single_game.py
+test_issues.py
+apply_fixes.py
+fix_*.py
+fixes.py
+
+# Node modules (already there but making sure)
+codenames-site/node_modules/
+codenames-site/dist/
