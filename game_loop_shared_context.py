@@ -120,16 +120,15 @@ class SharedContextGameLoop:
             await asyncio.sleep(1)
 
             # Spymaster gives clue
-            clue, private_reasoning = spymaster.give_clue_with_reasoning(self.game, team)
+            clue = spymaster.give_clue_with_reasoning(self.game, team)
 
             # Add private thoughts
             self.add_to_chat(f"{spymaster.name} (Spymaster)", team_name,
-                           private_reasoning, is_private=True)
+                           f"{clue.reasoning}; {clue.word}; {clue.number}", is_private=True)
 
             # Add public clue
             self.add_to_chat(f"{spymaster.name} (Spymaster)", team_name,
                            f"{clue.word} {clue.number}")
-
             self.game.give_clue(clue)
 
             self.add_to_chat(f"{guesser.name} (Guesser)", team_name, "Let me consider the clue...")
