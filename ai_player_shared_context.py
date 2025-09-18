@@ -105,20 +105,21 @@ class SharedContextAIPlayer:
         # First, private reasoning context
         board_state = self._get_board_state_for_spymaster(game, team)
 
-        private_prompt = f"""You are the {self.team_color} team spymaster in Codenames.
+        private_prompt = f"""You are {self.name}, playing as the {self.team_color} TEAM SPYMASTER.
+You are ONLY giving clues for the {self.team_color} team. Your teammate is the {self.team_color} team guesser.
 
-BOARD STATE:
+BOARD STATE (you can see all words and their teams):
 {board_state}
 
-Think carefully about what clue to give. Consider:
-1. Which words connect well
-2. What associations your teammate might make
+Think carefully about what clue to give for YOUR {self.team_color} TEAM:
+1. Which {self.team_color} words connect well
+2. What associations YOUR {self.team_color} teammate might make
 3. How to avoid opponent's words and the assassin
 4. The current score and game state
 
-Previous clues given in this game: {self._get_clue_history()}
+Previous clues given in this game (by ALL teams): {self._get_clue_history()}
 
-What clue should you give? Think step by step about your reasoning.
+What clue should you give for YOUR {self.team_color} TEAM? Think step by step about your reasoning.
 
 Respond in JSON: {{"reasoning": "your detailed private thoughts", "clue_word": "WORD", "clue_number": 2}}"""
 
@@ -129,6 +130,13 @@ Respond in JSON: {{"reasoning": "your detailed private thoughts", "clue_word": "
         # Parse response
         clue_data = self._parse_json_response(private_response)
         private_reasoning = clue_data.get("reasoning", "")
+
+        # Validate single word clue (Codenames rules!)
+        if len(clue_data["clue_word"].split()) > 1:
+            print(f"WARNING: {self.name} tried to cheat with multi-word clue: '{clue_data['clue_word']}'")
+            # Take just the first word
+            clue_data["clue_word"] = clue_data["clue_word"].split()[0].upper()
+            private_reasoning += f" (NOTE: Tried to give multi-word clue, using only '{clue_data['clue_word']}')"
 
         # Now add to SHARED context
         public_announcement = f"[{self.name} - {self.team_color} Spymaster]: {clue_data['clue_word']} {clue_data['clue_number']}"
@@ -155,18 +163,20 @@ Respond in JSON: {{"reasoning": "your detailed private thoughts", "clue_word": "
         """
 
         # Build context from shared game history
-        context_prompt = f"""You are the {self.team_color} team guesser in Codenames.
+        context_prompt = f"""You are {self.name}, playing as the {self.team_color} TEAM GUESSER.
+Your team is {self.team_color}. You ONLY respond to clues from YOUR {self.team_color} team's spymaster.
 
-GAME CONTEXT:
+GAME CONTEXT (showing all teams' moves):
 {self._format_shared_context()}
 
-Current clue from your spymaster: "{clue.word}" for {clue.number}
+YOUR TEAM'S CURRENT CLUE: "{clue.word}" for {clue.number}
+This clue is from YOUR {self.team_color} team spymaster.
 
 VISIBLE BOARD (unrevealed words only):
 {self._get_visible_words(game)}
 
-Based on the clue and game context, what word should you guess?
-Think about what your spymaster might be connecting.
+Based on YOUR TEAM'S clue, what word should you guess?
+Remember: You are on the {self.team_color} team. Only consider the clue from YOUR spymaster.
 
 Respond in JSON: {{"guess": "WORD", "reasoning": "brief explanation"}}"""
 

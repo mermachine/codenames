@@ -45,17 +45,36 @@ async def mock_game_with_chat(websocket):
             "isPrivate": True
         })
         
+        # Create flat board array
+        words = ["ROBOT", "OCEAN", "MOON", "FIRE", "TREE",
+                "STAR", "RIVER", "COMPUTER", "MOUNTAIN", "BOOK",
+                "CLOUD", "BRIDGE", "DRAGON", "CASTLE", "SWORD",
+                "FOREST", "TEMPLE", "CRYSTAL", "TOWER", "MAZE",
+                "PORTAL", "SHADOW", "PHOENIX", "GARDEN", "STORM"]
+
+        board = []
+        for i, word in enumerate(words):
+            # Assign some teams for testing
+            if i < 9:
+                team_type = "red" if i % 2 == 0 else "blue"
+            elif i < 17:
+                team_type = "blue" if i % 2 == 0 else "red"
+            elif i == 24:
+                team_type = "assassin"
+            else:
+                team_type = "neutral"
+
+            board.append({
+                "text": word,
+                "team": team_type,
+                "revealed": False
+            })
+
         await websocket.send(json.dumps({
             "phase": "THINKING",
             "last_action": f"{team} spymaster is thinking...",
             "current_team": team,
-            "board": [
-                ["ROBOT", "OCEAN", "MOON", "FIRE", "TREE"],
-                ["STAR", "RIVER", "COMPUTER", "MOUNTAIN", "BOOK"],
-                ["CLOUD", "BRIDGE", "DRAGON", "CASTLE", "SWORD"],
-                ["FOREST", "TEMPLE", "CRYSTAL", "TOWER", "MAZE"],
-                ["PORTAL", "SHADOW", "PHOENIX", "GARDEN", "STORM"]
-            ],
+            "board": board,
             "shared_context": chat_history
         }))
         await asyncio.sleep(2)
@@ -74,13 +93,7 @@ async def mock_game_with_chat(websocket):
             "phase": "GUESSING",
             "last_action": f"Clue: {clue} for 2",
             "current_team": team,
-            "board": [
-                ["ROBOT", "OCEAN", "MOON", "FIRE", "TREE"],
-                ["STAR", "RIVER", "COMPUTER", "MOUNTAIN", "BOOK"],
-                ["CLOUD", "BRIDGE", "DRAGON", "CASTLE", "SWORD"],
-                ["FOREST", "TEMPLE", "CRYSTAL", "TOWER", "MAZE"],
-                ["PORTAL", "SHADOW", "PHOENIX", "GARDEN", "STORM"]
-            ],
+            "board": board,  # Use the same flat board
             "shared_context": chat_history
         }))
         await asyncio.sleep(2)
@@ -96,26 +109,26 @@ async def mock_game_with_chat(websocket):
         })
         
         # Make guess
-        result = random.choice([team, "NEUTRAL", "BLUE" if team == "RED" else "RED"])
-        board_display = [
-            [f"{word} [{result}]" if w == word else w for w in ["ROBOT", "OCEAN", "MOON", "FIRE", "TREE"]],
-            ["STAR", "RIVER", "COMPUTER", "MOUNTAIN", "BOOK"],
-            ["CLOUD", "BRIDGE", "DRAGON", "CASTLE", "SWORD"],
-            ["FOREST", "TEMPLE", "CRYSTAL", "TOWER", "MAZE"],
-            ["PORTAL", "SHADOW", "PHOENIX", "GARDEN", "STORM"]
-        ]
-        
+        result = random.choice([team.lower(), "neutral", "blue" if team == "RED" else "red"])
+
+        # Update board to mark word as revealed
+        for card in board:
+            if card["text"] == word:
+                card["revealed"] = True
+                card["team"] = result  # Update team to match actual
+                break
+
         chat_history.append({
             "speaker": "System",
             "team": "SYSTEM",
             "message": f"{word} was {result}!"
         })
-        
+
         await websocket.send(json.dumps({
             "phase": "GUESSING",
             "last_action": f"Revealed: {word} was {result}",
             "current_team": team,
-            "board": board_display,
+            "board": board,
             "shared_context": chat_history
         }))
         await asyncio.sleep(2)
