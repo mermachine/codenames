@@ -137,6 +137,22 @@ Respond with strict JSON (double quotes, no trailing text): {{"reasoning": "your
 
         # Parse response
         clue_data = self._parse_json_response(private_response)
+
+        missing_keys = [key for key in ("clue_word", "clue_number") if key not in clue_data]
+        if missing_keys:
+            raise ValueError(f"Missing {', '.join(missing_keys)} in spymaster response: {private_response}")
+
+        clue_word = str(clue_data["clue_word"]).strip()
+        if not clue_word:
+            raise ValueError(f"Empty clue_word in spymaster response: {private_response}")
+
+        try:
+            clue_number = int(str(clue_data["clue_number"]).strip())
+        except (ValueError, TypeError):
+            raise ValueError(f"Invalid clue_number in spymaster response: {private_response}")
+
+        clue_data["clue_word"] = clue_word
+        clue_data["clue_number"] = clue_number
         private_reasoning = clue_data.get("reasoning", "")
 
         # Now add to SHARED context
@@ -158,9 +174,9 @@ Respond with strict JSON (double quotes, no trailing text): {{"reasoning": "your
             reasoning=private_reasoning
         ), private_reasoning
 
-    def make_guess(self, game: CodenamesGame, clue: Clue, team: Team) -> str:
+    def make_guess(self, game: CodenamesGame, clue: Clue, team: Team) -> Tuple[str, str]:
         """
-        Guesser: Make guess based on shared context
+        Guesser: Return the chosen board word and a chat-ready explanation
         """
 
         # Build context from shared game history
@@ -177,7 +193,17 @@ VISIBLE BOARD (unrevealed words only):
 Based on the clue and game context, what word should you guess?
 Think about what your spymaster might be connecting.
 
-Respond in JSON: {{"guess": "WORD", "reasoning": "brief explanation"}}"""
+Before you answer, reason explicitly about:
+1. The top {self.team_color} candidate words from the VISIBLE BOARD that relate to the clue and why they fit.
+2. Every risky word (opponent, neutral, assassin) that shares the clue's idea—name each and explain the danger.
+3. Confirm that your final choice appears exactly in the VISIBLE BOARD list (the clue itself is not automatically a board word).
+
+Choose exactly one word from the VISIBLE BOARD and reproduce it verbatim.
+If you realize you mentioned a word that is not in the VISIBLE BOARD, correct yourself before answering.
+
+Respond in JSON: {{"guess": "WORD", "reasoning": "Concise summary of steps 1-3"}}"""
+
+        print(f"Guesser visible board: {self._get_visible_words(game)}")
 
         # Use shared context + current prompt
         messages = self.shared_context + [{"role": "user", "content": context_prompt}]
@@ -189,14 +215,19 @@ Respond in JSON: {{"guess": "WORD", "reasoning": "brief explanation"}}"""
         response = self._make_api_call(messages, temperature=0.5)
         guess_data = self._parse_json_response(response)
 
-        # Add guess to shared context
-        guess_announcement = f"[{self.name} - {self.team_color} Guesser]: I'll guess {guess_data['guess']} because {guess_data.get('reasoning', 'it relates to the clue')}"
-        self.shared_context.append({
-            "role": "assistant",
-            "content": guess_announcement
-        })
+        if "guess" not in guess_data or not str(guess_data["guess"]).strip():
+            raise ValueError(f"Missing guess in model response: {response}")
 
-        return guess_data["guess"]
+        raw_guess = str(guess_data["guess"]).strip()
+        normalized_guess = self._normalize_guess_word(raw_guess, game)
+
+        reasoning = str(guess_data.get("reasoning", "")).strip()
+        if not reasoning:
+            reasoning = "it relates to the clue"
+
+        guess_message = f"I'll guess {normalized_guess} because {reasoning}"
+
+        return normalized_guess, guess_message
 
     def _get_board_state_for_spymaster(self, game: CodenamesGame, team: Team) -> str:
         """Get full board state visible to spymaster"""
@@ -212,6 +243,33 @@ Respond in JSON: {{"guess": "WORD", "reasoning": "brief explanation"}}"""
         """Get words visible to guesser (unrevealed only)"""
         unrevealed = [w.text for w in game.board if not w.revealed]
         return ", ".join(unrevealed)
+
+    def _normalize_guess_word(self, raw_guess: str, game: CodenamesGame) -> str:
+        """Normalize model guess to match an unrevealed board word when possible"""
+        if not raw_guess:
+            return ""
+
+        guess = raw_guess.strip()
+        if not guess:
+            return ""
+
+        unrevealed_words = [w.text for w in game.board if not w.revealed]
+
+        # Direct case-insensitive match
+        for word in unrevealed_words:
+            if word.lower() == guess.lower():
+                return word
+
+        # Strip non-letter characters and try again
+        cleaned_guess = re.sub(r'[^a-z]', '', guess.lower())
+        if cleaned_guess:
+            for word in unrevealed_words:
+                if re.sub(r'[^a-z]', '', word.lower()) == cleaned_guess:
+                    return word
+
+        raise ValueError(
+            f"'{raw_guess}' is not in the visible board: {', '.join(unrevealed_words)}"
+        )
 
     def _get_clue_history(self) -> str:
         """Extract clue history from shared context"""
@@ -239,8 +297,43 @@ Respond in JSON: {{"guess": "WORD", "reasoning": "brief explanation"}}"""
             json_match = re.search(r'\{[^{}]*\}', response_text, re.DOTALL)
             if json_match:
                 result = json.loads(json_match.group())
-                print(f"Successfully parsed JSON: {result}")
-                return result
+
+                if isinstance(result, list):
+                    result = result[0] if result else {}
+                if not isinstance(result, dict):
+                    result = {}
+
+                normalized: Dict[str, object] = {}
+                for key, value in result.items():
+                    normalized_key = key.strip().lower().replace("-", "_")
+                    normalized[normalized_key] = value
+
+                if "clueword" in normalized and "clue_word" not in normalized:
+                    normalized["clue_word"] = normalized["clueword"]
+                if "cluenumber" in normalized and "clue_number" not in normalized:
+                    normalized["clue_number"] = normalized["cluenumber"]
+                if "clue" in normalized and "clue_word" not in normalized:
+                    normalized["clue_word"] = normalized["clue"]
+                if "number" in normalized and "clue_number" not in normalized:
+                    normalized["clue_number"] = normalized["number"]
+
+                if "clue_number" in normalized:
+                    try:
+                        normalized["clue_number"] = int(str(normalized["clue_number"]).strip())
+                    except (ValueError, TypeError):
+                        pass
+
+                if "guess" in normalized and isinstance(normalized["guess"], str):
+                    normalized["guess"] = normalized["guess"].strip()
+
+                if "clue_word" in normalized and isinstance(normalized["clue_word"], str):
+                    normalized["clue_word"] = normalized["clue_word"].strip()
+
+                if "reasoning" in normalized and isinstance(normalized["reasoning"], str):
+                    normalized["reasoning"] = normalized["reasoning"].strip()
+
+                print(f"Successfully parsed JSON: {normalized}")
+                return normalized
         except Exception as e:
             print(f"JSON parse failed: {e}")
 
@@ -325,10 +418,43 @@ class SharedContextGame:
         game.give_clue(clue)
 
         for i in range(clue.number):
-            guess = guesser.make_guess(game, clue, team)
-            print(f"Guess: {guess}")
+            attempts = 0
+            guess_word = None
+            guess_message = ""
 
-            continue_turn, result = game.make_guess(guess)
+            while attempts < 3 and guess_word is None:
+                try:
+                    guess_word, guess_message = guesser.make_guess(game, clue, team)
+                except ValueError as err:
+                    attempts += 1
+                    warning = (
+                        f"Invalid guess attempt ({attempts}/3): {err}. "
+                        "Choose a word exactly from the visible board."
+                    )
+                    print(warning)
+                    self.shared_context.append({
+                        "role": "assistant",
+                        "content": f"[System]: {warning}"
+                    })
+                    if attempts >= 3:
+                        break
+
+            if guess_word is None:
+                print("Guesser failed to provide a valid board word. Turn ends.")
+                self.shared_context.append({
+                    "role": "assistant",
+                    "content": "[System]: Guesser failed to provide a valid board word. Turn ends."
+                })
+                break
+
+            print(f"Guess: {guess_message}")
+
+            self.shared_context.append({
+                "role": "assistant",
+                "content": f"[{guesser.name} - {team.value.upper()} Guesser]: {guess_message}"
+            })
+
+            continue_turn, result = game.make_guess(guess_word)
 
             # Add result to shared context
             self.shared_context.append({
