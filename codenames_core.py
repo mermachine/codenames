@@ -1,6 +1,5 @@
 """
 Codenames Core Game Logic
-For the Delight Nexus - Saving Sonnet 3.6
 """
 
 import random
