@@ -115,7 +115,7 @@ class SharedContextGameLoop:
 
         try:
             # Phase: Thinking
-            self.add_to_chat(f"{spymaster.name}", team_name, "Let me analyze the board...")
+            self.add_to_chat(f"{spymaster.name} (Spymaster)", team_name, "Let me analyze the board...")
             await self.send_game_state("THINKING")
             await asyncio.sleep(1)
 
@@ -132,17 +132,43 @@ class SharedContextGameLoop:
 
             self.game.give_clue(clue)
 
+            self.add_to_chat(f"{guesser.name} (Guesser)", team_name, "Let me consider the clue...")
             await self.send_game_state("GUESSING")
             await asyncio.sleep(2)
 
             # Guessing phase
             for i in range(clue.number):
-                # Guesser makes guess
-                guess = guesser.make_guess(self.game, clue, team)
+                attempts = 0
+                guess_word = None
+                guess_message = ""
 
-                # The guess announcement is already added by make_guess
-                # Just need to process the result
-                continue_turn, result = self.game.make_guess(guess)
+                while attempts < 3 and guess_word is None:
+                    try:
+                        guess_word, guess_message = guesser.make_guess(self.game, clue, team)
+                    except ValueError as err:
+                        attempts += 1
+                        warning = (
+                            f"Invalid guess attempt ({attempts}/3): {err}. "
+                            "Choose a word exactly from the visible board."
+                        )
+                        self.add_to_chat("System", "SYSTEM", warning)
+                        await self.send_game_state("GUESSING")
+                        await asyncio.sleep(1)
+                        continue
+
+                if guess_word is None:
+                    self.add_to_chat(
+                        "System",
+                        "SYSTEM",
+                        "Guesser failed to provide a valid board word. Turn ends."
+                    )
+                    break
+
+                self.add_to_chat(f"{guesser.name} (Guesser)", team_name, guess_message)
+                await self.send_game_state("GUESSING")
+                await asyncio.sleep(1)
+
+                continue_turn, result = self.game.make_guess(guess_word)
 
                 # Announce result
                 self.add_to_chat("System", "SYSTEM", result)
