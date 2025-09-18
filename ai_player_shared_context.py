@@ -8,6 +8,7 @@ import re
 import requests
 from typing import Dict, List, Optional, Tuple
 from codenames_core import CodenamesGame, Team, Clue
+from rules import CODENAME_RULES
 
 # Model configurations
 MODEL_CONFIGS = {
@@ -36,8 +37,8 @@ MODEL_CONFIGS = {
         "name": "Mixtral 8x7B"
     },
     "qwen": {
-        "model": "qwen/qwen-2-72b-instruct",
-        "name": "Qwen 2 72B"
+        "model": "qwen/qwen-2.5-72b-instruct",
+        "name": "Qwen 2.5 72B"
     }
 }
 
@@ -105,22 +106,30 @@ class SharedContextAIPlayer:
         # First, private reasoning context
         board_state = self._get_board_state_for_spymaster(game, team)
 
-        private_prompt = f"""You are the {self.team_color} team spymaster in Codenames.
+        private_prompt = f"""You are the {self.team_color} team spymaster in the board game Codenames. Your teammate only sees the clue you announce, so you must translate the hidden board into the safest, most informative clue.
 
-BOARD STATE:
+GAME RULES AND CONSTRAINTS:
+{CODENAME_RULES}
+
+BOARD STATE (hidden information for you only):
 {board_state}
-
-Think carefully about what clue to give. Consider:
-1. Which words connect well
-2. What associations your teammate might make
-3. How to avoid opponent's words and the assassin
-4. The current score and game state
 
 Previous clues given in this game: {self._get_clue_history()}
 
-What clue should you give? Think step by step about your reasoning.
+Before answering, reason step by step about:
+1. Which unrevealed {self.team_color} words can be grouped under a single, strong shared idea
+2. The associations your teammate is likely to make from that idea, including accidental links to other teams' words
+3. Every opponent, neutral, and assassin word that could also fit the clue—name each risky word with its color and assess the danger (assassin = instant loss, opponent = they score + turn ends, neutral = turn ends). If any assassin fits, abandon that clue.
+4. How the current score, remaining words, and tempo pressure should influence an aggressive or conservative clue_number
+5. Whether another concept provides a safer net of friendly words with fewer high-risk collisions
 
-Respond in JSON: {{"reasoning": "your detailed private thoughts", "clue_word": "WORD", "clue_number": 2}}"""
+CLUE REQUIREMENTS:
+- "clue_word" must be exactly one English word made of letters A-Z only (no spaces, punctuation, numbers, hyphens, or words shown on the board). Avoid morphs of board words.
+- "clue_number" tells your teammate how many unrevealed {self.team_color} cards on the grid are linked to this clue. Set it to the exact count you truly intend them to guess (0-9); never exaggerate or exceed the number of friendly words that match.
+- In your "reasoning", explicitly list any risky words you spotted (e.g., "Risks: red RIVER (flow), neutral DRAGON (myth)") and explain why the clue is still acceptable or how you mitigated the risk.
+- Never repeat a previous clue_word, describe hidden colors, or provide extra commentary outside the JSON.
+
+Respond with strict JSON (double quotes, no trailing text): {{"reasoning": "your detailed private thoughts", "clue_word": "WORD", "clue_number": NUMBER}}"""
 
         # Private reasoning (not shared)
         private_messages = [{"role": "user", "content": private_prompt}]
