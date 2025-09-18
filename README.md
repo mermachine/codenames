@@ -1,61 +1,86 @@
-# Codenames AI vs AI
+# Codenames AI vs AI 🎮
 
-Continuous Codenames game for Delight Nexus installation.
+## 🚀 Quick Start
 
-## Files
-
-- `codenames_core.py` - Game logic (board generation, turn management, scoring)
-- `ai_player.py` - Original AI player using Anthropic API directly
-- `ai_player_openrouter.py` - AI player using OpenRouter API (supports Claude, GPT, Llama, etc)
-- `game_loop.py` - Original continuous loop for Anthropic API
-- `game_loop_openrouter.py` - Continuous loop using OpenRouter for multiple models
-- `test_mock.py` - Test game mechanics without API calls
-- `test_game.py` - Test single game with real API calls
-
-## Quick Start
+### Testing (No API Key Required)
 
 ```bash
-# Test without API
-python test_mock.py
+# Terminal 1: Start mock server
+python simple_mock_with_chat.py
 
-# With OpenRouter API
-export OPENROUTER_API_KEY='your-key-here'
-python game_loop_openrouter.py
-
-# With Anthropic API (original)
-export ANTHROPIC_API_KEY='your-key-here'
-python test_game.py
+# Terminal 2: Start frontend
+cd codenames-site
+npm install  # First time only
+npm run dev
 ```
 
-## How It Works
+Open http://localhost:5173 to see the mock game.
 
-1. `CodenamesGame` class manages game state (25 words, team assignments, turns)
-2. `AIPlayer` class makes API calls to AI models for clues/guesses
-3. `ContinuousGameLoop` orchestrates endless games with different model pairings
-4. Game state is exposed via callbacks for visualization
+### Production (With Real AI)
 
-## OpenRouter Support
+```bash
+# Terminal 1: Start WebSocket server with your API key
+python websocket_shared_context.py YOUR_OPENROUTER_API_KEY
 
-Using OpenRouter allows testing with multiple model providers:
-- **Claude Models**: Sonnet 3.5, Opus, Haiku
-- **OpenAI Models**: GPT-4 Turbo, GPT-3.5 Turbo
-- **Open Source**: Llama 3 70B, Mixtral 8x7B, Qwen 2 72B
+# Terminal 2: Start frontend
+cd codenames-site
+npm run dev
+```
 
-Model pairings in `game_loop_openrouter.py` show personality differences across architectures.
+## 📝 Core Files
 
-## Current Status
+- **`codenames_core.py`** - Game engine (board, rules, scoring)
+- **`words.py`** - Curated word lists
+- **`ai_player_shared_context.py`** - AI players with shared public context + private thoughts
+- **`game_loop_shared_context.py`** - Game orchestration with chat history
+- **`websocket_shared_context.py`** - WebSocket server for real-time streaming
+- **`simple_mock_with_chat.py`** - Mock server for testing without API
 
-- Core game logic ✓
-- AI player with API calls ✓
-- Continuous loop ✓
-- OpenRouter support ✓
-- Visualization (TODO)
-- Human drop-in (TODO)
-- Video input processing (TODO)
+## 🎨 Features
 
-## Notes
+### Shared Context System
+- **Public Chat**: All players see clues and guesses (like table talk)
+- **Private Thoughts**: Spymasters' reasoning (toggleable in UI)
+- **Real-time Updates**: WebSocket streaming to React frontend
+- **Chat Sidebar**: Shows full conversation history
 
-- Models play both spymaster and guesser roles
-- Full reasoning is captured for personality analysis
-- Graceful error handling for API failures
-- Game history saved every 10 games
+### Frontend (codenames-site/)
+- React + TypeScript + Vite
+- Real-time game board
+- Chat sidebar with AI conversation
+- Private thoughts toggle
+- Tailwind CSS styling
+
+## 🤖 Supported Models
+
+Via OpenRouter API:
+- Claude Sonnet 3.5 / Haiku
+- GPT-4 Turbo / GPT-3.5
+- Llama 3 70B (free!)
+- Mixtral 8x7B (free!)
+- Qwen 2 72B (free!)
+
+## 🐛 Known Issues
+
+1. **Identity Confusion**: AIs sometimes think they made each other's moves due to shared context (hilarious but needs fixing)
+2. **"TOWER was TOWER was"**: ✅ Fixed!
+3. **JSON Parsing Errors**: ✅ Fixed with better fallbacks!
+
+## 🔧 Installation
+
+```bash
+# Python dependencies
+pip install websockets requests
+
+# Frontend dependencies
+cd codenames-site
+npm install
+```
+
+## 📚 Documentation
+
+- **`PROJECT_STRUCTURE.md`** - Detailed component descriptions
+
+## 🙏 
+
+Built with love.

@@ -145,7 +145,7 @@ class SharedContextGameLoop:
                 continue_turn, result = self.game.make_guess(guess)
 
                 # Announce result
-                self.add_to_chat("System", "SYSTEM", f"{guess} was {result}")
+                self.add_to_chat("System", "SYSTEM", result)
 
                 await self.send_game_state("GUESSING")
                 await asyncio.sleep(2)

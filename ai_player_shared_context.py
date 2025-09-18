@@ -221,27 +221,65 @@ Respond in JSON: {{"guess": "WORD", "reasoning": "brief explanation"}}"""
         return "\n".join(formatted) if formatted else "Game just started"
 
     def _parse_json_response(self, response_text: str) -> Dict:
-        """Parse JSON from response"""
+        """Parse JSON from response with robust fallbacks"""
+        # Debug log
+        print(f"Parsing response from {self.name}: {response_text[:100]}...")
+
         try:
-            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            # Try to find JSON in the response
+            json_match = re.search(r'\{[^{}]*\}', response_text, re.DOTALL)
             if json_match:
-                return json.loads(json_match.group())
-            return json.loads(response_text)
-        except:
-            # Fallback parsing
-            word_match = re.search(r'["\']?(\w+)["\']?\s*(?:for|,)\s*(\d)', response_text)
-            if word_match:
+                result = json.loads(json_match.group())
+                print(f"Successfully parsed JSON: {result}")
+                return result
+        except Exception as e:
+            print(f"JSON parse failed: {e}")
+
+        # Clean response text
+        text = response_text.upper()
+
+        # Look for clue patterns
+        if "clue" in response_text.lower() or "CLUE" in text:
+            # Pattern: WORD NUMBER
+            simple = re.search(r'([A-Z]+)\s+(\d+)', text)
+            if simple:
                 return {
-                    "clue_word": word_match.group(1).upper(),
-                    "clue_number": int(word_match.group(2)),
+                    "clue_word": simple.group(1),
+                    "clue_number": int(simple.group(2)),
                     "reasoning": response_text
                 }
 
-            guess_match = re.search(r'guess["\s:]+([A-Z]+)', response_text.upper())
-            if guess_match:
-                return {"guess": guess_match.group(1)}
+            # Pattern: "clue_word": "WORD", "clue_number": 2
+            pattern = re.search(r'clue_word["\s:]+([A-Z]+).*clue_number["\s:]+(\d+)', text)
+            if pattern:
+                return {
+                    "clue_word": pattern.group(1),
+                    "clue_number": int(pattern.group(2)),
+                    "reasoning": response_text
+                }
 
-            return {"guess": response_text.split()[0].upper()}
+        # Look for guess patterns
+        if "guess" in response_text.lower():
+            guess = re.search(r'([A-Z]{3,})', text)
+            if guess:
+                return {"guess": guess.group(1), "reasoning": response_text}
+
+        # Absolute fallback - find any uppercase word
+        words = re.findall(r'[A-Z]{3,}', text)
+        if words:
+            # If we're looking for a clue (has number)
+            numbers = re.findall(r'\d+', text)
+            if numbers:
+                return {
+                    "clue_word": words[0],
+                    "clue_number": int(numbers[0]),
+                    "reasoning": response_text
+                }
+            # Otherwise it's a guess
+            return {"guess": words[0], "reasoning": response_text}
+
+        # Last resort
+        raise ValueError(f"Could not parse response: {response_text[:100]}")
 
 
 class SharedContextGame:
