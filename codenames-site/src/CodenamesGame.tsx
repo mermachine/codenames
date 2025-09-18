@@ -1,7 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { CardGrid, type CardState } from './components/CardGrid';
 
 type GamePhase = 'STARTING' | 'THINKING' | 'GUESSING' | 'ENDED';
+
+interface ChatMessage {
+  speaker: string;
+  team: 'RED' | 'BLUE' | 'SYSTEM';
+  message: string;
+  isPrivate?: boolean;
+}
 
 interface GameState {
   phase: GamePhase;
@@ -13,21 +20,26 @@ interface GameState {
   game_state: any;
   red_team: string | null;
   blue_team: string | null;
+  shared_context?: ChatMessage[];
 }
 
 function CodenamesGame() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [connected, setConnected] = useState(false);
-  
+  const [showPrivateThoughts, setShowPrivateThoughts] = useState(false);
+  const chatEndRef = useRef<null | HTMLDivElement>(null);
+
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [gameState?.shared_context]);
 
   useEffect(() => {
-    // Connect to WebSocket server
     const websocket = new WebSocket('ws://localhost:8765');
 
     websocket.onopen = () => {
       console.log('Connected to game server');
       setConnected(true);
-      // Start a new game
       websocket.send(JSON.stringify({ command: 'start' }));
     };
 
@@ -45,20 +57,16 @@ function CodenamesGame() {
       console.error('WebSocket error:', error);
     };
 
-    
-
     return () => {
       websocket.close();
     };
   }, []);
 
-  // Convert board state to CardGrid format
   const getBoardStates = (): CardState[][] => {
     if (!gameState?.board) return [];
 
     return gameState.board.map(row =>
       row.map(cell => {
-        // Parse the cell string to determine state
         const isRevealed = cell.includes('[') && cell.includes(']');
         const word = isRevealed
           ? cell.substring(0, cell.indexOf('[')).trim()
@@ -71,11 +79,7 @@ function CodenamesGame() {
           else if (cell.includes('ASSASSIN')) kind = 'assassin';
         }
 
-        return {
-          word,
-          kind,
-          isRevealed
-        };
+        return { word, kind, isRevealed };
       })
     );
   };
@@ -94,86 +98,114 @@ function CodenamesGame() {
     return team.toLowerCase().includes('red') ? 'text-red-500' : 'text-blue-500';
   };
 
+  const getChatMessageStyle = (msg: ChatMessage) => {
+    if (msg.team === 'SYSTEM') return 'text-gray-400 italic';
+    if (msg.team === 'RED') return msg.isPrivate ? 'text-red-300 italic opacity-70' : 'text-red-400';
+    return msg.isPrivate ? 'text-blue-300 italic opacity-70' : 'text-blue-400';
+  };
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-900 text-white p-4">
+      <div className="max-w-full mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Codenames AI vs AI</h1>
-          <p className="text-gray-400">
-            Delight Nexus Installation 
-          </p>
-          <div className={`mt-2 ${connected ? 'text-green-400' : 'text-red-400'}`}>
-            {connected ? '● Connected' : '○ Disconnected'}
+        <div className="mb-4">
+          <h1 className="text-3xl font-bold mb-1">Codenames AI vs AI</h1>
+          <div className="flex items-center gap-4">
+            <p className="text-gray-400">Delight Nexus Installation</p>
+            <div className={`${connected ? 'text-green-400' : 'text-red-400'}`}>
+              {connected ? '● Connected' : '○ Disconnected'}
+            </div>
           </div>
         </div>
 
-        {gameState && (
-          <>
-            {/* Game Info Bar */}
-            <div className="bg-gray-800 rounded-lg p-4 mb-6">
-              <div className="flex justify-between items-center">
-                <div>
-                  <span className="text-gray-400">Phase: </span>
-                  <span className={getPhaseColor(gameState.phase)}>
-                    {gameState.phase}
-                  </span>
+        <div className="flex gap-4">
+          {/* Main Game Area */}
+          <div className="flex-1">
+            {gameState && (
+              <>
+                {/* Game Info Bar */}
+                <div className="bg-gray-800 rounded-lg p-3 mb-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="text-gray-400">Phase: </span>
+                      <span className={getPhaseColor(gameState.phase)}>
+                        {gameState.phase}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Turn: </span>
+                      <span className={getTeamColor(gameState.current_team)}>
+                        {gameState.current_team || 'Starting...'}
+                      </span>
+                    </div>
+                    <div className="text-gray-400">
+                      Games: {gameState.total_games}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-gray-400">Current Team: </span>
-                  <span className={getTeamColor(gameState.current_team)}>
-                    {gameState.current_team || 'Starting...'}
-                  </span>
-                </div>
-                <div className="text-gray-400">
-                  Games Played: {gameState.total_games}
-                </div>
-              </div>
-            </div>
 
-            {/* Teams */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-red-900 bg-opacity-30 rounded-lg p-4">
-                <h3 className="text-red-400 font-semibold mb-2">Red Team</h3>
-                <p>{gameState.red_team || 'Waiting...'}</p>
-              </div>
-              <div className="bg-blue-900 bg-opacity-30 rounded-lg p-4">
-                <h3 className="text-blue-400 font-semibold mb-2">Blue Team</h3>
-                <p>{gameState.blue_team || 'Waiting...'}</p>
-              </div>
-            </div>
+                {/* Teams */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="bg-red-900 bg-opacity-30 rounded-lg p-3">
+                    <h3 className="text-red-400 font-semibold">Red Team</h3>
+                    <p className="text-sm">{gameState.red_team || 'Waiting...'}</p>
+                  </div>
+                  <div className="bg-blue-900 bg-opacity-30 rounded-lg p-3">
+                    <h3 className="text-blue-400 font-semibold">Blue Team</h3>
+                    <p className="text-sm">{gameState.blue_team || 'Waiting...'}</p>
+                  </div>
+                </div>
 
-            {/* Game Board */}
-            {gameState.board && (
-              <div className="mb-6">
-                <CardGrid states={getBoardStates()} />
-              </div>
+                {/* Game Board */}
+                {gameState.board && (
+                  <div className="mb-4">
+                    <CardGrid states={getBoardStates()} />
+                  </div>
+                )}
+              </>
             )}
 
-            {/* Current Action */}
-            <div className="bg-gray-800 rounded-lg p-4 mb-4">
-              <h3 className="text-lg font-semibold mb-2">Current Action</h3>
-              <p className="text-yellow-200">{gameState.last_action}</p>
-            </div>
-
-            {/* AI Reasoning */}
-            {gameState.last_reasoning && (
-              <div className="bg-gray-800 rounded-lg p-4">
-                <h3 className="text-lg font-semibold mb-2">AI Reasoning</h3>
-                <p className="text-gray-300 whitespace-pre-wrap">
-                  {gameState.last_reasoning}
-                </p>
+            {/* Loading State */}
+            {!gameState && connected && (
+              <div className="text-center py-20">
+                <div className="text-2xl text-gray-400">Waiting for game...</div>
               </div>
             )}
-          </>
-        )}
-
-        {/* Loading State */}
-        {!gameState && connected && (
-          <div className="text-center py-20">
-            <div className="text-2xl text-gray-400">Waiting for game to start...</div>
           </div>
-        )}
+
+          {/* Chat Sidebar */}
+          <div className="w-96 bg-gray-800 rounded-lg p-4 flex flex-col h-[80vh]">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-lg font-semibold">Game Chat</h2>
+              <button
+                onClick={() => setShowPrivateThoughts(!showPrivateThoughts)}
+                className="text-xs bg-gray-700 px-2 py-1 rounded hover:bg-gray-600"
+              >
+                {showPrivateThoughts ? 'Hide' : 'Show'} Private Thoughts
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto bg-gray-900 rounded p-3 space-y-2">
+              {gameState?.shared_context?.map((msg, idx) => (
+                <div key={idx} className={`${msg.isPrivate && !showPrivateThoughts ? 'hidden' : ''}`}>
+                  <div className={`text-xs ${getChatMessageStyle(msg)}`}>
+                    {msg.speaker}
+                  </div>
+                  <div className={`text-sm ${getChatMessageStyle(msg)} ${msg.isPrivate ? 'pl-4' : ''}`}>
+                    {msg.isPrivate && '🤔 '}{msg.message}
+                  </div>
+                </div>
+              ))}
+              <div ref={chatEndRef} />
+
+              {(!gameState?.shared_context || gameState.shared_context.length === 0) && (
+                <div className="text-gray-500 text-center py-8">
+                  Game chat will appear here...
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
