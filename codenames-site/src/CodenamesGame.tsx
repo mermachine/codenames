@@ -10,13 +10,19 @@ interface ChatMessage {
   isPrivate?: boolean;
 }
 
+interface BoardCard {
+  text: string;
+  team: string;
+  revealed: boolean;
+}
+
 interface GameState {
   phase: GamePhase;
   last_action: string;
   last_reasoning: string;
   total_games: number;
   current_team: string | null;
-  board: string[][] | null;
+  board: BoardCard[] | null;
   game_state: any;
   red_team: string | null;
   blue_team: string | null;
@@ -62,26 +68,28 @@ function CodenamesGame() {
     };
   }, []);
 
-  const getBoardStates = (): CardState[][] => {
-    if (!gameState?.board) return [];
+  const getBoardStates = (): CardState[] => {
+    // If no board data, create placeholder cards
+    if (!gameState?.board) {
+      return Array.from({ length: 25 }, (_, i) => ({
+        word: '•••',
+        kind: 'neutral' as const,
+        isRevealed: false
+      }));
+    }
 
-    return gameState.board.map(row =>
-      row.map(cell => {
-        const isRevealed = cell.includes('[') && cell.includes(']');
-        const word = isRevealed
-          ? cell.substring(0, cell.indexOf('[')).trim()
-          : cell.trim();
+    return gameState.board.map(cell => {
+      let kind: 'red' | 'blue' | 'neutral' | 'assassin' = 'neutral';
+      if (cell.team === 'red') kind = 'red';
+      else if (cell.team === 'blue') kind = 'blue';
+      else if (cell.team === 'assassin') kind = 'assassin';
 
-        let kind: 'red' | 'blue' | 'neutral' | 'assassin' = 'neutral';
-        if (isRevealed) {
-          if (cell.includes('RED')) kind = 'red';
-          else if (cell.includes('BLUE')) kind = 'blue';
-          else if (cell.includes('ASSASSIN')) kind = 'assassin';
-        }
-
-        return { word, kind, isRevealed };
-      })
-    );
+      return {
+        word: cell.text,
+        kind,
+        isRevealed: cell.revealed
+      };
+    });
   };
 
   const getPhaseColor = (phase: GamePhase) => {
@@ -121,6 +129,11 @@ function CodenamesGame() {
         <div className="flex gap-4">
           {/* Main Game Area */}
           <div className="flex-1">
+            {/* Game Board - Always visible */}
+            <div className="mb-4">
+              <CardGrid states={getBoardStates()} />
+            </div>
+
             {gameState && (
               <>
                 {/* Game Info Bar */}
@@ -155,13 +168,6 @@ function CodenamesGame() {
                     <p className="text-sm">{gameState.blue_team || 'Waiting...'}</p>
                   </div>
                 </div>
-
-                {/* Game Board */}
-                {gameState.board && (
-                  <div className="mb-4">
-                    <CardGrid states={getBoardStates()} />
-                  </div>
-                )}
               </>
             )}
 

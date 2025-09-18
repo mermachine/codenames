@@ -155,6 +155,13 @@ Respond with strict JSON (double quotes, no trailing text): {{"reasoning": "your
         clue_data["clue_number"] = clue_number
         private_reasoning = clue_data.get("reasoning", "")
 
+        # Validate single word clue (Codenames rules!)
+        if len(clue_data["clue_word"].split()) > 1:
+            print(f"WARNING: {self.name} tried to cheat with multi-word clue: '{clue_data['clue_word']}'")
+            # Take just the first word
+            clue_data["clue_word"] = clue_data["clue_word"].split()[0].upper()
+            private_reasoning += f" (NOTE: Tried to give multi-word clue, using only '{clue_data['clue_word']}')"
+
         # Now add to SHARED context
         public_announcement = f"[{self.name} - {self.team_color} Spymaster]: {clue_data['clue_word']} {clue_data['clue_number']}"
         self.shared_context.append({
@@ -180,18 +187,20 @@ Respond with strict JSON (double quotes, no trailing text): {{"reasoning": "your
         """
 
         # Build context from shared game history
-        context_prompt = f"""You are the {self.team_color} team guesser in Codenames.
+        context_prompt = f"""You are {self.name}, playing as the {self.team_color} TEAM GUESSER.
+Your team is {self.team_color}. You ONLY respond to clues from YOUR {self.team_color} team's spymaster.
 
-GAME CONTEXT:
+GAME CONTEXT (showing all teams' moves):
 {self._format_shared_context()}
 
-Current clue from your spymaster: "{clue.word}" for {clue.number}
+YOUR TEAM'S CURRENT CLUE: "{clue.word}" for {clue.number}
+This clue is from YOUR {self.team_color} team spymaster.
 
 VISIBLE BOARD (unrevealed words only):
 {self._get_visible_words(game)}
 
-Based on the clue and game context, what word should you guess?
-Think about what your spymaster might be connecting.
+Based on YOUR TEAM'S clue, what word should you guess?
+Remember: You are on the {self.team_color} team. Only consider the clue from YOUR spymaster.
 
 Before you answer, reason explicitly about:
 1. The top {self.team_color} candidate words from the VISIBLE BOARD that relate to the clue and why they fit.

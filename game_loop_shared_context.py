@@ -91,7 +91,7 @@ class SharedContextGameLoop:
             "phase": phase,
             "total_games": self.total_games,
             "current_team": self.game.current_team.value if self.game.current_team else None,
-            "board": self.game.get_board_display(),
+            "board": [{"text": w.text, "team": w.team.value, "revealed": w.revealed} for w in self.game.board],
             "game_state": {
                 "red_remaining": len([w for w in self.game.board if w.team == Team.RED and not w.revealed]),
                 "blue_remaining": len([w for w in self.game.board if w.team == Team.BLUE and not w.revealed]),
