@@ -19,8 +19,11 @@ function CardCell({ state }: { state: CardState }) {
 export function CardGrid({ states }: { states: CardState[] }) {
   return (
     <div className="grid grid-cols-5 gap-4">
-      {states.map((state, idx) =>
-        <CardCell key={`${idx}-${state.word}`} state={state} />)}
+      {states.map((state, idx) => (
+        <div key={`${idx}-${state.word}`} className="aspect-square">
+          <CardCell state={state} />
+        </div>
+      ))}
     </div>
   );
 }
