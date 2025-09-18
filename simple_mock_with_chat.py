@@ -11,7 +11,31 @@ async def mock_game_with_chat(websocket):
         {"speaker": "System", "team": "SYSTEM", "message": "New game starting!"}
     ]
     
-    # Initial connection
+    # Initial connection - create flat board
+    initial_words = ["ROBOT", "OCEAN", "MOON", "FIRE", "TREE",
+                    "STAR", "RIVER", "COMPUTER", "MOUNTAIN", "BOOK",
+                    "CLOUD", "BRIDGE", "DRAGON", "CASTLE", "SWORD",
+                    "FOREST", "TEMPLE", "CRYSTAL", "TOWER", "MAZE",
+                    "PORTAL", "SHADOW", "PHOENIX", "GARDEN", "STORM"]
+
+    initial_board = []
+    for i, word in enumerate(initial_words):
+        # Assign teams for initial display
+        if i < 9:
+            team_type = "red" if i % 2 == 0 else "blue"
+        elif i < 17:
+            team_type = "blue" if i % 2 == 0 else "red"
+        elif i == 24:
+            team_type = "assassin"
+        else:
+            team_type = "neutral"
+
+        initial_board.append({
+            "text": word,
+            "team": team_type,
+            "revealed": False
+        })
+
     await websocket.send(json.dumps({
         "phase": "STARTING",
         "last_action": "Welcome to Codenames AI vs AI!",
@@ -20,13 +44,7 @@ async def mock_game_with_chat(websocket):
         "current_team": "RED",
         "red_team": "Claude (Red)",
         "blue_team": "GPT-4 (Blue)",
-        "board": [
-            ["ROBOT", "OCEAN", "MOON", "FIRE", "TREE"],
-            ["STAR", "RIVER", "COMPUTER", "MOUNTAIN", "BOOK"],
-            ["CLOUD", "BRIDGE", "DRAGON", "CASTLE", "SWORD"],
-            ["FOREST", "TEMPLE", "CRYSTAL", "TOWER", "MAZE"],
-            ["PORTAL", "SHADOW", "PHOENIX", "GARDEN", "STORM"]
-        ],
+        "board": initial_board,
         "shared_context": chat_history
     }))
     
