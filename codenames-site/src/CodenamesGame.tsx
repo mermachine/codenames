@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { CardGrid, type CardState } from './components/CardGrid';
 
 type GamePhase = 'STARTING' | 'THINKING' | 'GUESSING' | 'ENDED';
@@ -112,6 +112,18 @@ function CodenamesGame() {
     return msg.isPrivate ? 'text-blue-300 italic opacity-70' : 'text-blue-400';
   };
 
+  const remainingCards = useMemo(() => {
+    if (!gameState?.board) return null;
+
+    return gameState.board.reduce<{ red: number; blue: number }>((counts, cell) => {
+      if (!cell.revealed) {
+        if (cell.team === 'red') counts.red += 1;
+        else if (cell.team === 'blue') counts.blue += 1;
+      }
+      return counts;
+    }, { red: 0, blue: 0 });
+  }, [gameState?.board]);
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
       <div className="max-w-full mx-auto">
@@ -159,13 +171,17 @@ function CodenamesGame() {
 
                 {/* Teams */}
                 <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="bg-red-900 bg-opacity-30 rounded-lg p-3">
-                    <h3 className="text-red-400 font-semibold">Red Team</h3>
-                    <p className="text-sm">{gameState.red_team || 'Waiting...'}</p>
+                  <div className="bg-red-900 bg-opacity-30 rounded-lg p-3 flex items-center justify-between gap-4">
+                    <h2 className="text-red-200 font-semibold">{gameState.red_team || 'Waiting...'}</h2>
+                    <h2 className="text-red-200 text-3xl font-semibold">
+                      {remainingCards ? remainingCards.red : '—'}
+                    </h2>
                   </div>
-                  <div className="bg-blue-900 bg-opacity-30 rounded-lg p-3">
-                    <h3 className="text-blue-400 font-semibold">Blue Team</h3>
-                    <p className="text-sm">{gameState.blue_team || 'Waiting...'}</p>
+                  <div className="bg-blue-900 bg-opacity-30 rounded-lg p-3 flex items-center justify-between gap-4">
+                    <h2 className="text-blue-200 text-3xl font-semibold">
+                      {remainingCards ? remainingCards.blue : '—'}
+                    </h2>
+                    <h3 className="text-blue-200 font-semibold">{gameState.blue_team || 'Waiting...'}</h3>
                   </div>
                 </div>
               </>

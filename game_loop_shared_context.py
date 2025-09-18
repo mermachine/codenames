@@ -133,10 +133,10 @@ class SharedContextGameLoop:
 
             self.add_to_chat(f"{guesser.name} (Guesser)", team_name, "Let me consider the clue...")
             await self.send_game_state("GUESSING")
-            await asyncio.sleep(2)
+            await asyncio.sleep(1)
 
             # Guessing phase
-            for i in range(clue.number):
+            for _ in range(clue.number):
                 attempts = 0
                 guess_word = None
                 guess_message = ""
