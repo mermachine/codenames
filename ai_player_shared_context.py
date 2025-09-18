@@ -150,20 +150,16 @@ Respond with strict JSON (double quotes, no trailing text): {{"reasoning": "your
             clue_number = int(str(clue_data["clue_number"]).strip())
         except (ValueError, TypeError):
             raise ValueError(f"Invalid clue_number in spymaster response: {private_response}")
-
-        clue_data["clue_word"] = clue_word
-        clue_data["clue_number"] = clue_number
+        
         private_reasoning = clue_data.get("reasoning", "")
 
         # Validate single word clue (Codenames rules!)
-        if len(clue_data["clue_word"].split()) > 1:
-            print(f"WARNING: {self.name} tried to cheat with multi-word clue: '{clue_data['clue_word']}'")
-            # Take just the first word
-            clue_data["clue_word"] = clue_data["clue_word"].split()[0].upper()
-            private_reasoning += f" (NOTE: Tried to give multi-word clue, using only '{clue_data['clue_word']}')"
+        if len(clue_word.split()) > 1:
+            raise ValueError(f"Received more than one clue_word in spymaster response: {private_response}")
 
         # Now add to SHARED context
-        public_announcement = f"[{self.name} - {self.team_color} Spymaster]: {clue_data['clue_word']} {clue_data['clue_number']}"
+        public_announcement = f"[{self.name} - {self.team_color} Spymaster]: {clue_word} {clue_number}"
+        
         self.shared_context.append({
             "role": "assistant",
             "content": public_announcement
@@ -176,10 +172,10 @@ Respond with strict JSON (double quotes, no trailing text): {{"reasoning": "your
         })
 
         return Clue(
-            word=clue_data["clue_word"],
-            number=int(clue_data["clue_number"]),
+            word=clue_word,
+            number=clue_number,
             reasoning=private_reasoning
-        ), private_reasoning
+        )
 
     def make_guess(self, game: CodenamesGame, clue: Clue, team: Team) -> Tuple[str, str]:
         """
@@ -299,9 +295,15 @@ Respond in JSON: {{"guess": "WORD", "reasoning": "Concise summary of steps 1-3"}
     def _parse_json_response(self, response_text: str) -> Dict:
         """Parse JSON from response with robust fallbacks"""
         # Debug log
-        print(f"Parsing response from {self.name}: {response_text[:100]}...")
+        print(f"Parsing response from {self.name}: {response_text}")
 
         try:
+            def sanitize_string(s):
+                # Create a translation table to remove control characters
+                control_chars = ''.join(map(chr, range(32))) # ASCII control characters
+                translator = str.maketrans('', '', control_chars)
+                return s.translate(translator)
+            response_text = sanitize_string(response_text)
             # Try to find JSON in the response
             json_match = re.search(r'\{[^{}]*\}', response_text, re.DOTALL)
             if json_match:
@@ -317,34 +319,10 @@ Respond in JSON: {{"guess": "WORD", "reasoning": "Concise summary of steps 1-3"}
                     normalized_key = key.strip().lower().replace("-", "_")
                     normalized[normalized_key] = value
 
-                if "clueword" in normalized and "clue_word" not in normalized:
-                    normalized["clue_word"] = normalized["clueword"]
-                if "cluenumber" in normalized and "clue_number" not in normalized:
-                    normalized["clue_number"] = normalized["cluenumber"]
-                if "clue" in normalized and "clue_word" not in normalized:
-                    normalized["clue_word"] = normalized["clue"]
-                if "number" in normalized and "clue_number" not in normalized:
-                    normalized["clue_number"] = normalized["number"]
-
-                if "clue_number" in normalized:
-                    try:
-                        normalized["clue_number"] = int(str(normalized["clue_number"]).strip())
-                    except (ValueError, TypeError):
-                        pass
-
-                if "guess" in normalized and isinstance(normalized["guess"], str):
-                    normalized["guess"] = normalized["guess"].strip()
-
-                if "clue_word" in normalized and isinstance(normalized["clue_word"], str):
-                    normalized["clue_word"] = normalized["clue_word"].strip()
-
-                if "reasoning" in normalized and isinstance(normalized["reasoning"], str):
-                    normalized["reasoning"] = normalized["reasoning"].strip()
-
                 print(f"Successfully parsed JSON: {normalized}")
                 return normalized
         except Exception as e:
-            print(f"JSON parse failed: {e}")
+            raise ValueError(f"JSON parse failed: {e}")
 
         # Clean response text
         text = response_text.upper()
