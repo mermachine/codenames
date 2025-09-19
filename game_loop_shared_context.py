@@ -34,6 +34,11 @@ class SharedContextGameLoop:
         """Resume the game loop"""
         self.paused = False
 
+    async def check_pause(self):
+        """Check if game is paused and wait until resumed"""
+        while self.paused:
+            await asyncio.sleep(0.1)
+
     def notify_visualizers(self, state: Dict):
         """Send state update to all visualizers"""
         for callback in self.visualization_callbacks:
@@ -65,6 +70,8 @@ class SharedContextGameLoop:
 
     async def initialize_game(self, red_model: str, blue_model: str):
         """Initialize new game with fresh shared context"""
+        import random
+
         self.total_games += 1
 
         # Reset contexts
@@ -77,18 +84,27 @@ class SharedContextGameLoop:
         # Create new game
         self.game = CodenamesGame(DEFAULT_WORDS)
 
-        # Create players with shared context reference
+        # Randomly assign four different models for maximum chaos!
+        available_models = list(MODEL_CONFIGS.keys())
+        red_spymaster_model = random.choice(available_models)
+        red_guesser_model = random.choice(available_models)
+        blue_spymaster_model = random.choice(available_models)
+        blue_guesser_model = random.choice(available_models)
+
+        # Create players with shared context reference - each with their own random model
         self.players = {
-            "red_spymaster": SharedContextAIPlayer(red_model, "RED", self.shared_context),
-            "red_guesser": SharedContextAIPlayer(red_model, "RED", self.shared_context),
-            "blue_spymaster": SharedContextAIPlayer(blue_model, "BLUE", self.shared_context),
-            "blue_guesser": SharedContextAIPlayer(blue_model, "BLUE", self.shared_context)
+            "red_spymaster": SharedContextAIPlayer(red_spymaster_model, "RED", self.shared_context),
+            "red_guesser": SharedContextAIPlayer(red_guesser_model, "RED", self.shared_context),
+            "blue_spymaster": SharedContextAIPlayer(blue_spymaster_model, "BLUE", self.shared_context),
+            "blue_guesser": SharedContextAIPlayer(blue_guesser_model, "BLUE", self.shared_context)
         }
 
-        # Announce game start
+        # Announce game start with all four models
         self.add_to_chat("System", "SYSTEM", f"Game {self.total_games} starting!")
         self.add_to_chat("System", "SYSTEM",
-                        f"Red Team: {MODEL_CONFIGS[red_model]['name']} vs Blue Team: {MODEL_CONFIGS[blue_model]['name']}")
+                        f"🔴 Red Team: {MODEL_CONFIGS[red_spymaster_model]['name']} (spymaster) + {MODEL_CONFIGS[red_guesser_model]['name']} (guesser)")
+        self.add_to_chat("System", "SYSTEM",
+                        f"🔵 Blue Team: {MODEL_CONFIGS[blue_spymaster_model]['name']} (spymaster) + {MODEL_CONFIGS[blue_guesser_model]['name']} (guesser)")
 
         # Send initial state
         await self.send_game_state("STARTING")
@@ -106,11 +122,12 @@ class SharedContextGameLoop:
                 "blue_remaining": len([w for w in self.game.board if w.team == Team.BLUE and not w.revealed]),
                 "turn_count": len(self.game.turn_history)
             },
-            "red_team": self.players["red_spymaster"].name,
-            "blue_team": self.players["blue_spymaster"].name,
+            "red_team": f"{self.players['red_spymaster'].name} + {self.players['red_guesser'].name}",
+            "blue_team": f"{self.players['blue_spymaster'].name} + {self.players['blue_guesser'].name}",
             "shared_context": self.chat_messages,
             "last_action": self.chat_messages[-1]["message"] if self.chat_messages else "",
-            "last_reasoning": ""
+            "last_reasoning": "",
+            "paused": self.paused
         }
         self.notify_visualizers(state)
 
@@ -127,6 +144,9 @@ class SharedContextGameLoop:
             self.add_to_chat(f"{spymaster.name} (Spymaster)", team_name, "Let me analyze the board...")
             await self.send_game_state("THINKING")
             await asyncio.sleep(1)
+
+            # Check for pause before API call
+            await self.check_pause()
 
             # Spymaster gives clue
             clue = spymaster.give_clue_with_reasoning(self.game, team)
@@ -146,6 +166,9 @@ class SharedContextGameLoop:
 
             # Guessing phase
             for _ in range(clue.number):
+                # Check for pause before each guess
+                await self.check_pause()
+
                 attempts = 0
                 guess_word = None
                 guess_message = ""
@@ -228,9 +251,17 @@ class SharedContextGameLoop:
 
         # Game over
         if self.game.winner:
-            winner_name = self.players["red_spymaster"].name if self.game.winner == Team.RED else self.players["blue_spymaster"].name
+            if self.game.winner == Team.RED:
+                spymaster_name = self.players["red_spymaster"].name
+                guesser_name = self.players["red_guesser"].name
+                winner_team = f"{spymaster_name} + {guesser_name}"
+            else:
+                spymaster_name = self.players["blue_spymaster"].name
+                guesser_name = self.players["blue_guesser"].name
+                winner_team = f"{spymaster_name} + {guesser_name}"
+
             self.add_to_chat("System", "SYSTEM",
-                           f"🎉 Game Over! {winner_name} ({self.game.winner.value}) wins!")
+                           f"🎉 Game Over! {winner_team} ({self.game.winner.value}) wins!")
         else:
             self.add_to_chat("System", "SYSTEM", "Game ended (turn limit)")
 
