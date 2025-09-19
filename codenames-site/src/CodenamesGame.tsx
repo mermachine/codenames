@@ -109,9 +109,9 @@ function CodenamesGame() {
   };
 
   const getChatMessageStyle = (msg: ChatMessage) => {
-    if (msg.team === 'SYSTEM') return 'text-gray-400 italic';
-    if (msg.team === 'RED') return msg.isPrivate ? 'text-red-300 italic opacity-70' : 'text-red-400';
-    return msg.isPrivate ? 'text-blue-300 italic opacity-70' : 'text-blue-400';
+    if (msg.team === 'SYSTEM') return 'text-[#9da3c4] italic';
+    if (msg.team === 'RED') return msg.isPrivate ? 'text-[#ffb0cc] italic opacity-70' : 'text-[#ff6ea7]';
+    return msg.isPrivate ? 'text-[#a3dbff] italic opacity-70' : 'text-[#63cfff]';
   };
 
   const remainingCards = useMemo(() => {
@@ -293,20 +293,20 @@ function CodenamesGame() {
   const cardTeam = finalSummary?.team ?? currentTurnTeam ?? (displayClue?.team ?? activeClue?.team ?? null);
 
   const cardBorderClass = cardTeam === 'RED'
-    ? 'border-red-500/60 shadow-red-900/40'
+    ? 'border-[#ff4f8b]/50 shadow-[0_0_26px_rgba(255,79,139,0.28)]'
     : cardTeam === 'BLUE'
-      ? 'border-blue-500/60 shadow-blue-900/40'
-      : 'border-white/10';
+      ? 'border-[#58c6ff]/50 shadow-[0_0_26px_rgba(88,198,255,0.26)]'
+      : 'border-white/12 shadow-[0_0_24px_rgba(132,126,255,0.22)]';
 
-  const clueToneClass = cardTeam === 'RED' ? 'text-red-200' : cardTeam === 'BLUE' ? 'text-blue-200' : 'text-gray-300';
+  const clueToneClass = cardTeam === 'RED' ? 'text-[#ffd6e4]' : cardTeam === 'BLUE' ? 'text-[#e2f4ff]' : 'text-[#e5e6ff]';
   const guessChipClass = cardTeam === 'RED'
-    ? 'bg-red-900/70 text-red-100'
+    ? 'bg-[#2b1326]/80 text-[#ffd6e4] border border-[#ff4f8b]/45 shadow-[0_0_18px_rgba(255,79,139,0.22)]'
     : cardTeam === 'BLUE'
-      ? 'bg-blue-900/70 text-blue-100'
-      : 'bg-gray-800 text-gray-200';
+      ? 'bg-[#0d2032]/80 text-[#e2f4ff] border border-[#58c6ff]/45 shadow-[0_0_18px_rgba(88,198,255,0.22)]'
+      : 'bg-[#181533]/80 text-[#e5e6ff] border border-white/12 shadow-[0_0_15px_rgba(134,126,255,0.18)]';
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4">
+    <div className="min-h-screen text-white/95 p-6 sm:p-8 lg:p-12">
       <div className="max-w-full mx-auto">
         {/* Header */}
         <div className="mb-4">
@@ -319,28 +319,34 @@ function CodenamesGame() {
           </div>
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex gap-6 xl:gap-10">
           {/* Main Game Area */}
           <div className="flex-1">
             {gameState && (
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-red-900 bg-opacity-30 rounded-lg p-3 flex items-center justify-between gap-4">
-                  <h2 className="text-red-200 font-semibold">{gameState.red_team || 'Waiting...'}</h2>
-                  <h2 className="text-red-200 text-3xl font-semibold">
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="rounded-2xl border border-[#ff4f8b]/28 bg-gradient-to-br from-[#1f152b] via-[#2a1a34] to-[#3a2142] p-4 flex items-center justify-between gap-4 shadow-[0_0_24px_rgba(255,79,139,0.2)]">
+                  <div className="text-left">
+                    <div className="text-xs uppercase tracking-[0.3em] text-[#ff9fbe]/75">Red Team</div>
+                    <h2 className="text-[#ffe3ef] text-lg font-semibold">{gameState.red_team || 'Waiting...'}</h2>
+                  </div>
+                  <h2 className="text-[#ffb4cd] text-4xl font-bold drop-shadow-[0_0_12px_rgba(255,79,139,0.35)]">
                     {remainingCards ? remainingCards.red : '—'}
                   </h2>
                 </div>
-                <div className="bg-blue-900 bg-opacity-30 rounded-lg p-3 flex items-center justify-between gap-4">
-                  <h2 className="text-blue-200 text-3xl font-semibold">
+                <div className="rounded-2xl border border-[#58c6ff]/28 bg-gradient-to-br from-[#0e1b2c] via-[#14273a] to-[#1f3a50] p-4 flex items-center justify-between gap-4 shadow-[0_0_24px_rgba(88,198,255,0.2)]">
+                  <h2 className="text-[#b9e9ff] text-4xl font-bold drop-shadow-[0_0_12px_rgba(88,198,255,0.35)]">
                     {remainingCards ? remainingCards.blue : '—'}
                   </h2>
-                  <h3 className="text-blue-200 font-semibold">{gameState.blue_team || 'Waiting...'}</h3>
+                  <div className="text-right">
+                    <div className="text-xs uppercase tracking-[0.3em] text-[#8fdcff]/65">Blue Team</div>
+                    <h3 className="text-[#effaff] text-lg font-semibold">{gameState.blue_team || 'Waiting...'}</h3>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Game Board - Always visible */}
-            <div className="mb-4">
+            <div className="mb-6">
               <CardGrid states={getBoardStates()} />
             </div>
 
@@ -354,7 +360,7 @@ function CodenamesGame() {
 
           {/* Chat Sidebar */}
           <div className="w-96 flex flex-col gap-4">
-            <div className={`rounded-lg border bg-gray-900/80 p-4 shadow-lg shadow-black/30 ${cardBorderClass}`}>
+            <div className={`rounded-xl border bg-[#140a2e]/85 backdrop-blur-sm p-4 shadow-lg shadow-black/30 ${cardBorderClass}`}>
               <div className="flex flex-wrap items-baseline gap-3">
                 {displayClue ? (
                   <>
@@ -393,18 +399,18 @@ function CodenamesGame() {
               )}
             </div>
 
-            <div className="bg-gray-800 rounded-lg p-4 flex flex-col h-[80vh]">
+            <div className="rounded-xl border border-white/10 bg-[#0d0820]/80 backdrop-blur-sm p-4 flex flex-col h-[80vh] shadow-[0_0_25px_rgba(45,35,89,0.35)]">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-lg font-semibold">Game Chat</h2>
                 <button
                   onClick={() => setShowPrivateThoughts(!showPrivateThoughts)}
-                  className="text-xs bg-gray-700 px-2 py-1 rounded hover:bg-gray-600"
+                  className="text-xs rounded border border-white/10 bg-[#1a1233]/70 px-3 py-1 tracking-wide uppercase text-[10px] text-[#dcd4ff] transition hover:border-white/30 hover:bg-[#241642]"
                 >
                   {showPrivateThoughts ? 'Hide' : 'Show'} Private Thoughts
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto bg-gray-900 rounded p-3 space-y-2">
+              <div className="flex-1 overflow-y-auto bg-[#080318]/80 rounded p-3 space-y-2">
                 {gameState?.shared_context?.map((msg, idx) => (
                   <div key={idx} className={`${msg.isPrivate && !showPrivateThoughts ? 'hidden' : ''}`}>
                     <div className={`text-xs ${getChatMessageStyle(msg)}`}>
