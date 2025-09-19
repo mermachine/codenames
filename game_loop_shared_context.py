@@ -34,6 +34,11 @@ class SharedContextGameLoop:
         """Resume the game loop"""
         self.paused = False
 
+    async def check_pause(self):
+        """Check if game is paused and wait until resumed"""
+        while self.paused:
+            await asyncio.sleep(0.1)
+
     def notify_visualizers(self, state: Dict):
         """Send state update to all visualizers"""
         for callback in self.visualization_callbacks:
@@ -139,6 +144,9 @@ class SharedContextGameLoop:
             await self.send_game_state("THINKING")
             await asyncio.sleep(1)
 
+            # Check for pause before API call
+            await self.check_pause()
+
             # Spymaster gives clue
             clue = spymaster.give_clue_with_reasoning(self.game, team)
 
@@ -157,6 +165,9 @@ class SharedContextGameLoop:
 
             # Guessing phase
             for _ in range(clue.number):
+                # Check for pause before each guess
+                await self.check_pause()
+
                 attempts = 0
                 guess_word = None
                 guess_message = ""
