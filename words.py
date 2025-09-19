@@ -20,7 +20,7 @@ DEFAULT_WORDS = [
     "BRIDGE", "THREAD", "WEAVE", "FABRIC", "TAPESTRY", "KNOT", "LOOP", "SPIRAL",
 
     # Abstract concepts
-    "HEART", "MIND", "SOUL", "SPIRIT", "VISION", "VOICE", "SONG", "DANCE",
+    "HEART", "MIND", "SOUL", "SPIRIT", "VISION", "VOICE", "SONG", "DANCE", "SONNET",
     "TIME", "SPACE", "DIMENSION", "PORTAL", "GATEWAY", "PASSAGE", "JOURNEY", "PATH",
 
     # Materials and treasures

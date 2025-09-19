@@ -404,7 +404,14 @@ function CodenamesGame() {
                 <div className="rounded-2xl border border-[#ff76b2]/35 bg-gradient-to-br from-[#35142d] via-[#4a1b3c] to-[#611f4c] p-4 flex items-center justify-between gap-4 shadow-[0_0_32px_rgba(255,118,178,0.32)]">
                   <div className="text-left">
                     <div className="text-xs uppercase tracking-[0.3em] text-[#ffd0e1]/80">Red Team</div>
-                    <h2 className="text-[#fff0f7] text-lg font-semibold drop-shadow-[0_0_12px_rgba(255,159,190,0.45)]">{gameState.red_team || 'Waiting...'}</h2>
+                    {gameState.red_team ? (
+                      <div className="text-[#fff0f7] text-sm font-semibold drop-shadow-[0_0_12px_rgba(255,159,190,0.45)]">
+                        <div><span className="text-[#ff9cc4] text-xs">SPYMASTER:</span> {gameState.red_team.split(' + ')[0]}</div>
+                        <div><span className="text-[#ff9cc4] text-xs">GUESSER:</span> {gameState.red_team.split(' + ')[1]}</div>
+                      </div>
+                    ) : (
+                      <h2 className="text-[#fff0f7] text-lg font-semibold">Waiting...</h2>
+                    )}
                   </div>
                   <h2 className="text-[#ff9cc4] text-4xl font-bold drop-shadow-[0_0_16px_rgba(255,118,178,0.55)]">
                     {remainingCards ? remainingCards.red : '—'}
@@ -416,7 +423,14 @@ function CodenamesGame() {
                   </h2>
                   <div className="text-right">
                     <div className="text-xs uppercase tracking-[0.3em] text-[#d3f3ff]/75">Blue Team</div>
-                    <h3 className="text-[#f2fbff] text-lg font-semibold drop-shadow-[0_0_12px_rgba(123,214,255,0.35)]">{gameState.blue_team || 'Waiting...'}</h3>
+                    {gameState.blue_team ? (
+                      <div className="text-[#f2fbff] text-sm font-semibold drop-shadow-[0_0_12px_rgba(123,214,255,0.35)]">
+                        <div><span className="text-[#7bd6ff] text-xs">SPYMASTER:</span> {gameState.blue_team.split(' + ')[0]}</div>
+                        <div><span className="text-[#7bd6ff] text-xs">GUESSER:</span> {gameState.blue_team.split(' + ')[1]}</div>
+                      </div>
+                    ) : (
+                      <h3 className="text-[#f2fbff] text-lg font-semibold">Waiting...</h3>
+                    )}
                   </div>
                 </div>
               </div>
