@@ -27,6 +27,7 @@ interface GameState {
   red_team: string | null;
   blue_team: string | null;
   shared_context?: ChatMessage[];
+  paused?: boolean;
 }
 
 type TeamColor = 'RED' | 'BLUE';
@@ -50,6 +51,9 @@ function CodenamesGame() {
   const [connected, setConnected] = useState(false);
   const [showPrivateThoughts, setShowPrivateThoughts] = useState(true);
   const [paused, setPaused] = useState(false);
+  const [gamePaused, setGamePaused] = useState(false); // Actual game pause state from backend
+  const [humanMessage, setHumanMessage] = useState('');
+  const [selectedAI, setSelectedAI] = useState<string | null>(null);
   const chatEndRef = useRef<null | HTMLDivElement>(null);
   const chatContainerRef = useRef<null | HTMLDivElement>(null);
   const websocketRef = useRef<WebSocket | null>(null);
@@ -116,6 +120,10 @@ function CodenamesGame() {
     websocket.onmessage = (event) => {
       const state = JSON.parse(event.data);
       setGameState(state);
+      // Update the actual game pause state from backend
+      if (typeof state.paused === 'boolean') {
+        setGamePaused(state.paused);
+      }
     };
 
     websocket.onclose = () => {
@@ -157,6 +165,30 @@ function CodenamesGame() {
         console.error('Error toggling pause:', error);
       }
     }
+  };
+
+  const sendHumanMessage = () => {
+    console.log("sendHumanMessage called", { humanMessage, selectedAI, websocketConnected: !!websocketRef.current });
+
+    if (!humanMessage.trim() || !selectedAI || !websocketRef.current) {
+      console.log("Validation failed", {
+        hasMessage: !!humanMessage.trim(),
+        hasSelectedAI: !!selectedAI,
+        hasWebSocket: !!websocketRef.current
+      });
+      return;
+    }
+
+    const message = {
+      command: 'human_question',
+      target_ai: selectedAI,
+      message: humanMessage.trim()
+    };
+
+    console.log("Sending WebSocket message:", message);
+    websocketRef.current.send(JSON.stringify(message));
+    setHumanMessage('');
+    setSelectedAI(null);
   };
 
   const getBoardStates = (): CardState[] => {
@@ -393,6 +425,9 @@ function CodenamesGame() {
             <div className={`${connected ? 'text-green-400' : 'text-red-400'}`}>
               {connected ? '● Connected' : '○ Disconnected'}
             </div>
+            <div className="text-purple-400">
+              {gamePaused ? '● Paused' : '● Playing'}
+            </div>
           </div>
         </div>
 
@@ -521,10 +556,63 @@ function CodenamesGame() {
                 )}
               </div>
 
-              {/* Pause Button */}
+              {/* Controls Row 1 - AI Selectors + Pause */}
               {connected && (
-                <div className="mt-4 flex justify-end">
-                  <button
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    {/* AI Selector - only when paused */}
+                    {paused ? (
+                      <div className="flex items-center gap-3">
+                        <div className="text-xs text-[#c2c8ef] font-semibold">Ask:</div>
+
+                        {/* Single Compact AI Selector */}
+                        <div className="flex items-center gap-1 px-2 py-1 rounded border border-white/20 bg-[#1a1233]/50">
+                          {/* Team Balls */}
+                          <button
+                            onClick={() => {
+                              const currentRole = selectedAI?.includes('spymaster') ? 'spymaster' : 'guesser';
+                              setSelectedAI(`red_${currentRole}`);
+                            }}
+                            className={`w-3 h-3 rounded-full border transition-all ${
+                              selectedAI?.includes('red')
+                                ? 'bg-[#ff76b2] border-[#ff76b2] shadow-[0_0_8px_rgba(255,118,178,0.6)]'
+                                : 'border-[#ff76b2]/40 hover:border-[#ff76b2]/60 hover:bg-[#ff76b2]/20'
+                            }`}
+                          />
+                          <button
+                            onClick={() => {
+                              const currentRole = selectedAI?.includes('spymaster') ? 'spymaster' : 'guesser';
+                              setSelectedAI(`blue_${currentRole}`);
+                            }}
+                            className={`w-3 h-3 rounded-full border transition-all ${
+                              selectedAI?.includes('blue')
+                                ? 'bg-[#7bd6ff] border-[#7bd6ff] shadow-[0_0_8px_rgba(123,214,255,0.6)]'
+                                : 'border-[#7bd6ff]/40 hover:border-[#7bd6ff]/60 hover:bg-[#7bd6ff]/20'
+                            }`}
+                          />
+
+                          <span className="text-[10px] text-white/40 mx-1">|</span>
+
+                          {/* Role Toggle */}
+                          <button
+                            onClick={() => {
+                              const currentTeam = selectedAI?.includes('red') ? 'red' : selectedAI?.includes('blue') ? 'blue' : 'red';
+                              const newRole = selectedAI?.includes('spymaster') ? 'guesser' : 'spymaster';
+                              setSelectedAI(`${currentTeam}_${newRole}`);
+                            }}
+                            className="text-[10px] font-medium transition-colors hover:text-white"
+                          >
+                            <span className={selectedAI?.includes('spymaster') ? 'text-white' : 'text-white/60'}>SPY</span>
+                            <span className="text-white/40 mx-1">|</span>
+                            <span className={selectedAI?.includes('guesser') ? 'text-white' : 'text-white/60'}>GUESS</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div></div>
+                    )}
+
+                    <button
                     onClick={togglePause}
                     className={`text-sm rounded border border-white/10 bg-[#1a1233]/70 px-3 py-1 tracking-wide uppercase text-[11px] text-[#dcd4ff] transition hover:border-white/30 hover:bg-[#241642] min-w-[100px] flex items-center justify-center gap-1 ${
                       paused ? 'text-[#a7f3d0] border-green-400/30' : ''
@@ -546,6 +634,31 @@ function CodenamesGame() {
                       </>
                     )}
                   </button>
+                </div>
+
+                  {/* Controls Row 2 - Input Box */}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={humanMessage}
+                      onChange={(e) => setHumanMessage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && humanMessage.trim() && selectedAI && paused) {
+                          sendHumanMessage();
+                        }
+                      }}
+                      placeholder={paused ? "Ask an AI..." : "Pause game to ask an AI..."}
+                      disabled={!paused || !selectedAI}
+                      className="flex-1 px-3 py-2 text-sm bg-[#080318]/80 border border-white/10 rounded text-white placeholder-gray-500 transition-colors focus:border-white/30 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <button
+                      onClick={sendHumanMessage}
+                      disabled={!paused || !humanMessage.trim() || !selectedAI}
+                      className="px-3 py-2 text-sm bg-[#1a1233]/70 border border-white/10 rounded text-[#dcd4ff] transition hover:border-white/30 hover:bg-[#241642] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Ask
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

@@ -126,7 +126,8 @@ class SharedContextGameLoop:
             "blue_team": f"{self.players['blue_spymaster'].name} + {self.players['blue_guesser'].name}",
             "shared_context": self.chat_messages,
             "last_action": self.chat_messages[-1]["message"] if self.chat_messages else "",
-            "last_reasoning": ""
+            "last_reasoning": "",
+            "paused": self.paused
         }
         self.notify_visualizers(state)
 

@@ -370,6 +370,15 @@ Respond in JSON: {{"guess": "WORD", "reasoning": "Concise summary of steps 1-3"}
         # Last resort
         raise ValueError(f"Could not parse response: {response_text[:100]}")
 
+    def get_ai_response(self, prompt: str, max_tokens: int = 150) -> str:
+        """Get a simple AI response for human questions"""
+        messages = [
+            {"role": "system", "content": f"You are {self.name}, an AI playing Codenames. Be conversational and helpful."},
+            {"role": "user", "content": prompt}
+        ]
+
+        return self._make_api_call(messages, temperature=0.8)
+
 
 class SharedContextGame:
     """Game manager with shared context"""
