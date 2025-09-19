@@ -293,16 +293,16 @@ function CodenamesGame() {
   const cardTeam = finalSummary?.team ?? currentTurnTeam ?? (displayClue?.team ?? activeClue?.team ?? null);
 
   const cardBorderClass = cardTeam === 'RED'
-    ? 'border-[#ff4f8b]/50 shadow-[0_0_26px_rgba(255,79,139,0.28)]'
+    ? 'border-[#ff76b2]/55 shadow-[0_0_32px_rgba(255,118,178,0.4)]'
     : cardTeam === 'BLUE'
-      ? 'border-[#58c6ff]/50 shadow-[0_0_26px_rgba(88,198,255,0.26)]'
-      : 'border-white/12 shadow-[0_0_24px_rgba(132,126,255,0.22)]';
+      ? 'border-[#7bd6ff]/55 shadow-[0_0_32px_rgba(123,214,255,0.38)]'
+      : 'border-white/14 shadow-[0_0_26px_rgba(132,126,255,0.28)]';
 
-  const clueToneClass = cardTeam === 'RED' ? 'text-[#ffd6e4]' : cardTeam === 'BLUE' ? 'text-[#e2f4ff]' : 'text-[#e5e6ff]';
+  const clueToneClass = cardTeam === 'RED' ? 'text-[#ffe3ef]' : cardTeam === 'BLUE' ? 'text-[#e7f8ff]' : 'text-[#e5e6ff]';
   const guessChipClass = cardTeam === 'RED'
-    ? 'bg-[#2b1326]/80 text-[#ffd6e4] border border-[#ff4f8b]/45 shadow-[0_0_18px_rgba(255,79,139,0.22)]'
+    ? 'bg-[#30132a]/80 text-[#ffe3ef] border border-[#ff76b2]/45 shadow-[0_0_18px_rgba(255,118,178,0.22)]'
     : cardTeam === 'BLUE'
-      ? 'bg-[#0d2032]/80 text-[#e2f4ff] border border-[#58c6ff]/45 shadow-[0_0_18px_rgba(88,198,255,0.22)]'
+      ? 'bg-[#0f2334]/80 text-[#e7f8ff] border border-[#7bd6ff]/45 shadow-[0_0_18px_rgba(123,214,255,0.22)]'
       : 'bg-[#181533]/80 text-[#e5e6ff] border border-white/12 shadow-[0_0_15px_rgba(134,126,255,0.18)]';
 
   return (
@@ -324,22 +324,22 @@ function CodenamesGame() {
           <div className="flex-1">
             {gameState && (
               <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="rounded-2xl border border-[#ff4f8b]/28 bg-gradient-to-br from-[#1f152b] via-[#2a1a34] to-[#3a2142] p-4 flex items-center justify-between gap-4 shadow-[0_0_24px_rgba(255,79,139,0.2)]">
+                <div className="rounded-2xl border border-[#ff76b2]/35 bg-gradient-to-br from-[#35142d] via-[#4a1b3c] to-[#611f4c] p-4 flex items-center justify-between gap-4 shadow-[0_0_32px_rgba(255,118,178,0.32)]">
                   <div className="text-left">
-                    <div className="text-xs uppercase tracking-[0.3em] text-[#ff9fbe]/75">Red Team</div>
-                    <h2 className="text-[#ffe3ef] text-lg font-semibold">{gameState.red_team || 'Waiting...'}</h2>
+                    <div className="text-xs uppercase tracking-[0.3em] text-[#ffd0e1]/80">Red Team</div>
+                    <h2 className="text-[#fff0f7] text-lg font-semibold drop-shadow-[0_0_12px_rgba(255,159,190,0.45)]">{gameState.red_team || 'Waiting...'}</h2>
                   </div>
-                  <h2 className="text-[#ffb4cd] text-4xl font-bold drop-shadow-[0_0_12px_rgba(255,79,139,0.35)]">
+                  <h2 className="text-[#ff9cc4] text-4xl font-bold drop-shadow-[0_0_16px_rgba(255,118,178,0.55)]">
                     {remainingCards ? remainingCards.red : '—'}
                   </h2>
                 </div>
-                <div className="rounded-2xl border border-[#58c6ff]/28 bg-gradient-to-br from-[#0e1b2c] via-[#14273a] to-[#1f3a50] p-4 flex items-center justify-between gap-4 shadow-[0_0_24px_rgba(88,198,255,0.2)]">
-                  <h2 className="text-[#b9e9ff] text-4xl font-bold drop-shadow-[0_0_12px_rgba(88,198,255,0.35)]">
+                <div className="rounded-2xl border border-[#7bd6ff]/35 bg-gradient-to-br from-[#0f2436] via-[#16374f] to-[#1f4e6c] p-4 flex items-center justify-between gap-4 shadow-[0_0_32px_rgba(123,214,255,0.3)]">
+                  <h2 className="text-[#bfefff] text-4xl font-bold drop-shadow-[0_0_16px_rgba(123,214,255,0.5)]">
                     {remainingCards ? remainingCards.blue : '—'}
                   </h2>
                   <div className="text-right">
-                    <div className="text-xs uppercase tracking-[0.3em] text-[#8fdcff]/65">Blue Team</div>
-                    <h3 className="text-[#effaff] text-lg font-semibold">{gameState.blue_team || 'Waiting...'}</h3>
+                    <div className="text-xs uppercase tracking-[0.3em] text-[#d3f3ff]/75">Blue Team</div>
+                    <h3 className="text-[#f2fbff] text-lg font-semibold drop-shadow-[0_0_12px_rgba(123,214,255,0.35)]">{gameState.blue_team || 'Waiting...'}</h3>
                   </div>
                 </div>
               </div>
@@ -360,7 +360,7 @@ function CodenamesGame() {
 
           {/* Chat Sidebar */}
           <div className="w-96 flex flex-col gap-4">
-            <div className={`rounded-xl border bg-[#140a2e]/85 backdrop-blur-sm p-4 shadow-lg shadow-black/30 ${cardBorderClass}`}>
+            <div className={`rounded-2xl border bg-[#140a2e]/75 backdrop-blur-sm p-4 shadow-[0_0_28px_rgba(72,65,115,0.35)] transition ${cardBorderClass}`}>
               <div className="flex flex-wrap items-baseline gap-3">
                 {displayClue ? (
                   <>
