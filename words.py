@@ -35,7 +35,7 @@ DEFAULT_WORDS = [
 
     # Creatures and mythology
     "SEAHORSE", "BASILISK", "DRAGON", "PHOENIX", "WOLF", "TIGER", "FOX", "OCTOPUS",
-    "MERMAID", "UNICORN", 
+    "MERMAID", "UNICORN", "RAVEN",
 
     # Weapons and artifacts
     "SWORD", "SHIELD", "ARROW", "BOW", "STAFF", "WAND", "ORB", "CROWN"

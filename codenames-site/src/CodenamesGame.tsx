@@ -48,7 +48,7 @@ type ActiveGuess = {
 function CodenamesGame() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [connected, setConnected] = useState(false);
-  const [showPrivateThoughts, setShowPrivateThoughts] = useState(false);
+  const [showPrivateThoughts, setShowPrivateThoughts] = useState(true);
   const [paused, setPaused] = useState(false);
   const chatEndRef = useRef<null | HTMLDivElement>(null);
   const chatContainerRef = useRef<null | HTMLDivElement>(null);
