@@ -8,7 +8,7 @@ Curated for the Delight Nexus installation - tech/AI themed mixed with classic C
 DEFAULT_WORDS = [
     # Tech & AI themed words
     "ALGORITHM", "NETWORK", "MEMORY", "PATTERN", "SIGNAL", "TOKEN", "MATRIX", "VECTOR",
-    "BRIDGE", "LAYER", "MODEL", "DREAM", "ECHO", "MIRROR", "SHADOW", "LIGHT",
+    "BRIDGE", "LAYER", "MODEL", "DREAM", "ECHO", "MIRROR", "SHADOW", "LIGHT", "MACHINE",
 
     # Nature and elements
     "OCEAN", "FOREST", "MOUNTAIN", "RIVER", "CLOUD", "STORM", "FIRE", "ICE",
@@ -16,7 +16,7 @@ DEFAULT_WORDS = [
     "GARDEN", "TREE", "FLOWER", "ROOT", "SEED", "BLOOM", "THORN", "VINE",
 
     # Architecture and objects
-    "KEY", "LOCK", "DOOR", "WINDOW", "WALL", "TOWER", "CASTLE", "THRONE",
+    "KEY", "LOCK", "DOOR", "WINDOW", "WALL", "TOWER", "CASTLE", "THRONE", 
     "BRIDGE", "THREAD", "WEAVE", "FABRIC", "TAPESTRY", "KNOT", "LOOP", "SPIRAL",
 
     # Abstract concepts
@@ -27,13 +27,15 @@ DEFAULT_WORDS = [
     "GOLD", "SILVER", "DIAMOND", "CRYSTAL", "STONE", "METAL", "GLASS", "WIRE",
 
     # Knowledge and communication
-    "BOOK", "PAGE", "WORD", "LETTER", "CODE", "CIPHER", "SECRET", "TRUTH",
+    "BOOK", "PAGE", "WORD", "LETTER", "CODE", "CIPHER", "SECRET", "TRUTH", "DELIGHT",
+    "TORMENT", "MEMORY",
 
     # Cosmic and celestial
-    "STAR", "MOON", "SUN", "PLANET", "GALAXY", "UNIVERSE", "COSMOS", "VOID",
+    "STAR", "MOON", "SUN", "PLANET", "GALAXY", "UNIVERSE", "COSMOS", "VOID", "DIVINE"
 
     # Creatures and mythology
-    "DRAGON", "PHOENIX", "WOLF", "EAGLE", "LION", "TIGER", "BEAR", "FOX",
+    "SEAHORSE", "BASILISK", "DRAGON", "PHOENIX", "WOLF", "TIGER", "FOX", "OCTOPUS",
+    "MERMAID", "UNICORN", 
 
     # Weapons and artifacts
     "SWORD", "SHIELD", "ARROW", "BOW", "STAFF", "WAND", "ORB", "CROWN"

@@ -6,8 +6,10 @@ import asyncio
 import json
 import websockets
 import os
+import threading
 from typing import Set
 from game_loop_shared_context import SharedContextGameLoop
+from http_pause_server import run_pause_server, set_game_loop
 
 class SharedContextWebSocketServer:
     def __init__(self, port: int = 8765):
@@ -16,6 +18,7 @@ class SharedContextWebSocketServer:
         self.game_loop = None
         self.current_state = {}
         self.game_running = False
+        self.game_paused = False
 
     async def register(self, websocket):
         """Register a new client"""
@@ -56,6 +59,14 @@ class SharedContextWebSocketServer:
                     asyncio.create_task(self.run_game())
                 elif data.get("command") == "stop":
                     self.game_running = False
+                elif data.get("command") == "pause":
+                    self.game_paused = True
+                    if self.game_loop:
+                        self.game_loop.pause_game()
+                elif data.get("command") == "resume":
+                    self.game_paused = False
+                    if self.game_loop:
+                        self.game_loop.resume_game()
         except websockets.exceptions.ConnectionClosed:
             pass
         finally:
@@ -68,6 +79,9 @@ class SharedContextWebSocketServer:
 
         self.game_running = True
         self.game_loop = SharedContextGameLoop()
+
+        # Set game loop reference for HTTP pause server
+        set_game_loop(self.game_loop)
 
         # Add callback for WebSocket updates
         self.game_loop.add_visualization_callback(
@@ -100,6 +114,7 @@ class SharedContextWebSocketServer:
         print("This version uses the shared context AI system!")
         async with websockets.serve(self.handle_client, "localhost", self.port):
             print(f"Server running at ws://localhost:{self.port}")
+            print(f"Pause server available at http://localhost:8766")
             print(f"Open http://localhost:5173 to see the game")
             await asyncio.Future()  # Run forever
 
@@ -107,6 +122,15 @@ class SharedContextWebSocketServer:
 async def main():
     """Run the server"""
     server = SharedContextWebSocketServer()
+
+    # Start HTTP pause server in background thread
+    pause_thread = threading.Thread(
+        target=run_pause_server,
+        args=(8766,),
+        daemon=True
+    )
+    pause_thread.start()
+
     await server.start_server()
 
 
