@@ -20,10 +20,19 @@ class SharedContextGameLoop:
         self.game = None
         self.players = {}
         self.total_games = 0
+        self.paused = False
 
     def add_visualization_callback(self, callback: Callable):
         """Add callback for game state updates"""
         self.visualization_callbacks.append(callback)
+
+    def pause_game(self):
+        """Pause the game loop"""
+        self.paused = True
+
+    def resume_game(self):
+        """Resume the game loop"""
+        self.paused = False
 
     def notify_visualizers(self, state: Dict):
         """Send state update to all visualizers"""
@@ -207,6 +216,10 @@ class SharedContextGameLoop:
         max_turns = 30
 
         while not self.game.game_over and turn_count < max_turns:
+            # Check for pause
+            while self.paused:
+                await asyncio.sleep(0.5)
+
             await self.play_turn()
             turn_count += 1
 
