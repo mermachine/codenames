@@ -348,18 +348,6 @@ function CodenamesGame() {
             <div className={`${connected ? 'text-green-400' : 'text-red-400'}`}>
               {connected ? '● Connected' : '○ Disconnected'}
             </div>
-            {connected && (
-              <button
-                onClick={togglePause}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                  paused
-                    ? 'bg-green-600 hover:bg-green-700 text-white'
-                    : 'bg-yellow-600 hover:bg-yellow-700 text-white'
-                }`}
-              >
-                {paused ? '▶ Resume' : '⏸ Pause'}
-              </button>
-            )}
           </div>
         </div>
 
@@ -473,6 +461,34 @@ function CodenamesGame() {
                   </div>
                 )}
               </div>
+
+              {/* Pause Button */}
+              {connected && (
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={togglePause}
+                    className={`text-sm rounded border border-white/10 bg-[#1a1233]/70 px-3 py-1 tracking-wide uppercase text-[11px] text-[#dcd4ff] transition hover:border-white/30 hover:bg-[#241642] min-w-[100px] flex items-center justify-center gap-1 ${
+                      paused ? 'text-[#a7f3d0] border-green-400/30' : ''
+                    }`}
+                  >
+                    {paused ? (
+                      <>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        Resume
+                      </>
+                    ) : (
+                      <>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                        </svg>
+                        Pause
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
