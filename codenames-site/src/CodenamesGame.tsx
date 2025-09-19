@@ -91,11 +91,26 @@ function CodenamesGame() {
     };
   }, []);
 
-  const togglePause = () => {
-    if (websocketRef.current && connected) {
-      const command = paused ? 'resume' : 'pause';
-      websocketRef.current.send(JSON.stringify({ command }));
-      setPaused(!paused);
+  const togglePause = async () => {
+    if (connected) {
+      try {
+        const command = paused ? 'resume' : 'pause';
+        const response = await fetch(`http://localhost:8766/${command}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          setPaused(!paused);
+          console.log(`Game ${command}d successfully`);
+        } else {
+          console.error(`Failed to ${command} game`);
+        }
+      } catch (error) {
+        console.error('Error toggling pause:', error);
+      }
     }
   };
 
