@@ -53,13 +53,55 @@ function CodenamesGame() {
   const chatEndRef = useRef<null | HTMLDivElement>(null);
   const chatContainerRef = useRef<null | HTMLDivElement>(null);
   const websocketRef = useRef<WebSocket | null>(null);
+  const lastUserScrollTime = useRef<number>(0);
+  const autoScrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto-scroll chat to bottom
+  // Smart auto-scroll that respects user reading
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    if (!chatContainerRef.current) return;
+
+    const container = chatContainerRef.current;
+    const now = Date.now();
+    const timeSinceUserScroll = now - lastUserScrollTime.current;
+
+    // Check if user is at or near the bottom (within 50px)
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
+
+    // Auto-scroll immediately if user is already at bottom or hasn't scrolled recently
+    if (isNearBottom || timeSinceUserScroll > 10000) {
+      container.scrollTop = container.scrollHeight;
+    } else {
+      // User scrolled up recently, delay auto-scroll for 10 seconds
+      if (autoScrollTimeoutRef.current) {
+        clearTimeout(autoScrollTimeoutRef.current);
+      }
+
+      autoScrollTimeoutRef.current = setTimeout(() => {
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+      }, 10000 - timeSinceUserScroll);
     }
   }, [gameState?.shared_context]);
+
+  // Track user scroll events
+  const handleChatScroll = () => {
+    if (!chatContainerRef.current) return;
+
+    const container = chatContainerRef.current;
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
+
+    // Only update scroll time if user scrolled away from bottom
+    if (!isNearBottom) {
+      lastUserScrollTime.current = Date.now();
+    }
+
+    // Clear pending auto-scroll if user manually scrolled to bottom
+    if (isNearBottom && autoScrollTimeoutRef.current) {
+      clearTimeout(autoScrollTimeoutRef.current);
+      autoScrollTimeoutRef.current = null;
+    }
+  };
 
   useEffect(() => {
     const websocket = new WebSocket('ws://localhost:8765');
@@ -88,14 +130,32 @@ function CodenamesGame() {
     return () => {
       websocket.close();
       websocketRef.current = null;
+      if (autoScrollTimeoutRef.current) {
+        clearTimeout(autoScrollTimeoutRef.current);
+      }
     };
   }, []);
 
-  const togglePause = () => {
-    if (websocketRef.current && connected) {
-      const command = paused ? 'resume' : 'pause';
-      websocketRef.current.send(JSON.stringify({ command }));
-      setPaused(!paused);
+  const togglePause = async () => {
+    if (connected) {
+      try {
+        const command = paused ? 'resume' : 'pause';
+        const response = await fetch(`http://localhost:8766/${command}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          setPaused(!paused);
+          console.log(`Game ${command}d successfully`);
+        } else {
+          console.error(`Failed to ${command} game`);
+        }
+      } catch (error) {
+        console.error('Error toggling pause:', error);
+      }
     }
   };
 
@@ -333,18 +393,6 @@ function CodenamesGame() {
             <div className={`${connected ? 'text-green-400' : 'text-red-400'}`}>
               {connected ? '● Connected' : '○ Disconnected'}
             </div>
-            {connected && (
-              <button
-                onClick={togglePause}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                  paused
-                    ? 'bg-green-600 hover:bg-green-700 text-white'
-                    : 'bg-yellow-600 hover:bg-yellow-700 text-white'
-                }`}
-              >
-                {paused ? '▶ Resume' : '⏸ Pause'}
-              </button>
-            )}
           </div>
         </div>
 
@@ -439,13 +487,13 @@ function CodenamesGame() {
                 </button>
               </div>
 
-              <div ref={chatContainerRef} className="flex-1 overflow-y-auto bg-[#080318]/80 rounded p-3 space-y-2">
+              <div ref={chatContainerRef} onScroll={handleChatScroll} className="flex-1 overflow-y-auto bg-[#080318]/80 rounded p-3 space-y-3">
                 {gameState?.shared_context?.map((msg, idx) => (
-                  <div key={idx} className={`${msg.isPrivate && !showPrivateThoughts ? 'hidden' : ''}`}>
-                    <div className={`text-xs ${getChatMessageStyle(msg)}`}>
+                  <div key={idx} className={`${msg.isPrivate && !showPrivateThoughts ? 'hidden' : ''} text-left`}>
+                    <div className={`text-xs font-bold mb-2 ${getChatMessageStyle(msg)} uppercase tracking-widest bg-white/5 px-2 py-1 rounded inline-block`}>
                       {msg.speaker}
                     </div>
-                    <div className={`text-sm ${getChatMessageStyle(msg)} ${msg.isPrivate ? 'pl-4' : ''}`}>
+                    <div className={`text-sm leading-relaxed ${getChatMessageStyle(msg)} ${msg.isPrivate ? 'pl-3 border-l-2 border-white/20 italic' : ''}`}>
                       {msg.isPrivate && '🤔 '}{msg.message}
                     </div>
                   </div>
@@ -458,6 +506,34 @@ function CodenamesGame() {
                   </div>
                 )}
               </div>
+
+              {/* Pause Button */}
+              {connected && (
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={togglePause}
+                    className={`text-sm rounded border border-white/10 bg-[#1a1233]/70 px-3 py-1 tracking-wide uppercase text-[11px] text-[#dcd4ff] transition hover:border-white/30 hover:bg-[#241642] min-w-[100px] flex items-center justify-center gap-1 ${
+                      paused ? 'text-[#a7f3d0] border-green-400/30' : ''
+                    }`}
+                  >
+                    {paused ? (
+                      <>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        Resume
+                      </>
+                    ) : (
+                      <>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                        </svg>
+                        Pause
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
