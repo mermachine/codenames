@@ -52,7 +52,7 @@ Pointing at Words: Now the rest of team must select words to guess at, one at a 
 
 Once they point to a word, the moderator or one of the spymasters reveals the color of that word. If the word is the color of the guessing team, the team may continue guessing words (up to the number given in the clue + 1). If the color of the word is either Grey, or the other team's color, the turn immediately ends and the other team takes a turn (Though players can try to guess any words they had missed on a later turn).
 
-If the color is Black (Assassin) then the round immediately ends and the other team wins the round.
+If the color is Black (Assassin) then the game immediately ends and the team loses.
 
 The team must make at least one guess; after this, the team may stop at any time by posting the word "Pass" in bold in the thread.
 
