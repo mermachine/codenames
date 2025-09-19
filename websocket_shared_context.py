@@ -16,6 +16,7 @@ class SharedContextWebSocketServer:
         self.game_loop = None
         self.current_state = {}
         self.game_running = False
+        self.game_paused = False
 
     async def register(self, websocket):
         """Register a new client"""
@@ -56,6 +57,14 @@ class SharedContextWebSocketServer:
                     asyncio.create_task(self.run_game())
                 elif data.get("command") == "stop":
                     self.game_running = False
+                elif data.get("command") == "pause":
+                    self.game_paused = True
+                    if self.game_loop:
+                        self.game_loop.pause_game()
+                elif data.get("command") == "resume":
+                    self.game_paused = False
+                    if self.game_loop:
+                        self.game_loop.resume_game()
         except websockets.exceptions.ConnectionClosed:
             pass
         finally:

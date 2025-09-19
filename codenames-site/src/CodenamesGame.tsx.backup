@@ -49,21 +49,15 @@ function CodenamesGame() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [connected, setConnected] = useState(false);
   const [showPrivateThoughts, setShowPrivateThoughts] = useState(false);
-  const [paused, setPaused] = useState(false);
   const chatEndRef = useRef<null | HTMLDivElement>(null);
-  const chatContainerRef = useRef<null | HTMLDivElement>(null);
-  const websocketRef = useRef<WebSocket | null>(null);
 
   // Auto-scroll chat to bottom
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [gameState?.shared_context]);
 
   useEffect(() => {
     const websocket = new WebSocket('ws://localhost:8765');
-    websocketRef.current = websocket;
 
     websocket.onopen = () => {
       console.log('Connected to game server');
@@ -87,17 +81,8 @@ function CodenamesGame() {
 
     return () => {
       websocket.close();
-      websocketRef.current = null;
     };
   }, []);
-
-  const togglePause = () => {
-    if (websocketRef.current && connected) {
-      const command = paused ? 'resume' : 'pause';
-      websocketRef.current.send(JSON.stringify({ command }));
-      setPaused(!paused);
-    }
-  };
 
   const getBoardStates = (): CardState[] => {
     // If no board data, create placeholder cards
@@ -111,14 +96,14 @@ function CodenamesGame() {
 
     return gameState.board.map(cell => {
       let kind: 'red' | 'blue' | 'neutral' | 'assassin' = 'neutral';
-      if (cell?.team === 'red') kind = 'red';
-      else if (cell?.team === 'blue') kind = 'blue';
-      else if (cell?.team === 'assassin') kind = 'assassin';
+      if (cell.team === 'red') kind = 'red';
+      else if (cell.team === 'blue') kind = 'blue';
+      else if (cell.team === 'assassin') kind = 'assassin';
 
       return {
-        word: cell?.text || '•••',
+        word: cell.text,
         kind,
-        isRevealed: cell?.revealed || false
+        isRevealed: cell.revealed
       };
     });
   };
@@ -154,9 +139,7 @@ function CodenamesGame() {
     if (!gameState?.board) return map;
 
     gameState.board.forEach(card => {
-      if (card?.text) {
-        map.set(card.text.toLowerCase(), card.text.toUpperCase());
-      }
+      map.set(card.text.toLowerCase(), card.text.toUpperCase());
     });
 
     return map;
@@ -333,18 +316,6 @@ function CodenamesGame() {
             <div className={`${connected ? 'text-green-400' : 'text-red-400'}`}>
               {connected ? '● Connected' : '○ Disconnected'}
             </div>
-            {connected && (
-              <button
-                onClick={togglePause}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                  paused
-                    ? 'bg-green-600 hover:bg-green-700 text-white'
-                    : 'bg-yellow-600 hover:bg-yellow-700 text-white'
-                }`}
-              >
-                {paused ? '▶ Resume' : '⏸ Pause'}
-              </button>
-            )}
           </div>
         </div>
 
@@ -433,7 +404,7 @@ function CodenamesGame() {
                 </button>
               </div>
 
-              <div ref={chatContainerRef} className="flex-1 overflow-y-auto bg-gray-900 rounded p-3 space-y-2">
+              <div className="flex-1 overflow-y-auto bg-gray-900 rounded p-3 space-y-2">
                 {gameState?.shared_context?.map((msg, idx) => (
                   <div key={idx} className={`${msg.isPrivate && !showPrivateThoughts ? 'hidden' : ''}`}>
                     <div className={`text-xs ${getChatMessageStyle(msg)}`}>
