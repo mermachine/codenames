@@ -126,6 +126,80 @@
   }
 }
 
+@layer components {
+  .assassin-card {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  .assassin-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background:
+      linear-gradient(126deg, rgba(34, 23, 70, 0.38) 0%, rgba(12, 9, 32, 0.08) 28%, rgba(44, 28, 92, 0.32) 52%, rgba(10, 7, 30, 0.08) 80%),
+      linear-gradient(202deg, rgba(6, 5, 18, 0.96) 0%, rgba(3, 2, 10, 0.98) 58%, rgba(6, 5, 18, 0.94) 100%);
+    background-size: 160% 160%;
+    background-repeat: no-repeat;
+    mix-blend-mode: soft-light;
+    animation: assassinWaveFlow 7.5s ease-in-out infinite alternate;
+    z-index: 1;
+    opacity: 0.78;
+    filter: brightness(0.88);
+  }
+
+  .assassin-card::after {
+    content: '';
+    position: absolute;
+    inset: -12%;
+    border-radius: inherit;
+    background:
+      repeating-linear-gradient(138deg, rgba(18, 14, 38, 0.32) 0%, rgba(18, 14, 38, 0.32) 7%, rgba(6, 4, 18, 0.12) 12%, rgba(6, 4, 18, 0.12) 18%),
+      radial-gradient(70% 120% at 46% 86%, rgba(5, 4, 16, 0.96) 0%, rgba(2, 1, 8, 0.9) 60%, rgba(1, 1, 6, 0.05) 100%);
+    background-blend-mode: soft-light, normal;
+    background-position: 0% 0%, 48% 68%;
+    mix-blend-mode: soft-light;
+    animation: assassinWaveDrift 16s linear infinite;
+    z-index: 1;
+    opacity: 0.52;
+  }
+}
+
+@keyframes assassinWaveFlow {
+  0% {
+    transform: translate3d(-6%, -4%, 0) skewX(-2deg);
+    filter: brightness(0.78);
+  }
+  48% {
+    transform: translate3d(4%, 3%, 0) skewX(1.2deg);
+    filter: brightness(0.92);
+  }
+  100% {
+    transform: translate3d(-2%, 5%, 0) skewX(-1deg);
+    filter: brightness(0.84);
+  }
+}
+
+@keyframes assassinWaveDrift {
+  0% {
+    background-position: 0% 0%, 48% 68%;
+    transform: rotate(0.35deg) scale(1.02);
+    opacity: 0.46;
+  }
+  50% {
+    background-position: 34% 24%, 50% 70%;
+    transform: rotate(-0.4deg) scale(1.06);
+    opacity: 0.58;
+  }
+  100% {
+    background-position: 70% 54%, 46% 72%;
+    transform: rotate(0.35deg) scale(1.02);
+    opacity: 0.5;
+  }
+}
+
 /* Custom scrollbar styles */
 ::-webkit-scrollbar {
   width: 8px;

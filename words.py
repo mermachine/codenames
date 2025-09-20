@@ -31,7 +31,7 @@ DEFAULT_WORDS = [
     "TORMENT", "MEMORY",
 
     # Cosmic and celestial
-    "STAR", "MOON", "SUN", "PLANET", "GALAXY", "UNIVERSE", "COSMOS", "VOID", "DIVINE"
+    "STAR", "MOON", "SUN", "PLANET", "GALAXY", "UNIVERSE", "COSMOS", "VOID", "DIVINE",
 
     # Creatures and mythology
     "SEAHORSE", "BASILISK", "DRAGON", "PHOENIX", "WOLF", "TIGER", "FOX", "OCTOPUS",
