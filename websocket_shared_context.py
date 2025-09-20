@@ -85,8 +85,10 @@ class SharedContextWebSocketServer:
 
             print(f"[DEBUG] Targeting {ai_player.name} ({team} {target_ai})")
 
-            # Add human question to chat (always visible for now)
-            self.game_loop.add_to_chat("Human", "SYSTEM", f"Asks {ai_player.name}: {message}")
+            # Add human question to chat with @mention format
+            role_display = "Spymaster" if is_spymaster else "Guesser"
+            mention_format = f"@{ai_player.name}({role_display}): {message}"
+            self.game_loop.add_to_chat("Human", team, mention_format)
 
             # Get AI response
             # Create a simple prompt asking the AI to respond as their character

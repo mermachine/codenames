@@ -221,6 +221,31 @@ function CodenamesGame() {
     return msg.isPrivate ? 'text-[#a3dbff] italic opacity-70' : 'text-[#63cfff]';
   };
 
+  const formatMessageWithMentions = (message: string, messageTeam: string) => {
+    // Parse @mentions like "@ClaudeSonnet(Spymaster): What do you think?"
+    const mentionRegex = /@([^(]+)\(([^)]+)\):/;
+    const match = message.match(mentionRegex);
+
+    if (!match) return message;
+
+    const [fullMatch, aiName, role] = match;
+    const restOfMessage = message.substring(fullMatch.length).trim();
+
+    // Determine team color based on the message team
+    const mentionColor = messageTeam === 'RED' ? 'text-[#ff6ea7]' :
+                        messageTeam === 'BLUE' ? 'text-[#63cfff]' :
+                        'text-[#9da3c4]';
+
+    return (
+      <>
+        <span className={`${mentionColor} font-semibold`}>
+          @{aiName}({role})
+        </span>
+        : {restOfMessage}
+      </>
+    );
+  };
+
   const remainingCards = useMemo(() => {
     if (!gameState?.board) return null;
 
@@ -543,7 +568,7 @@ function CodenamesGame() {
                       {msg.speaker}
                     </div>
                     <div className={`text-sm leading-relaxed ${getChatMessageStyle(msg)} ${msg.isPrivate ? 'pl-3 border-l-2 border-white/20 italic' : ''}`}>
-                      {msg.isPrivate && '🤔 '}{msg.message}
+                      {msg.isPrivate && '🤔 '}{formatMessageWithMentions(msg.message, msg.team)}
                     </div>
                   </div>
                 ))}
