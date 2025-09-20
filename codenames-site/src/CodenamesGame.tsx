@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useLayoutEffect, useCallback } from 'react';
 import { CardGrid, type CardState } from './components/CardGrid';
 
 type GamePhase = 'STARTING' | 'THINKING' | 'GUESSING' | 'ENDED';
@@ -46,6 +46,110 @@ type ActiveGuess = {
   word: string;
 };
 
+type ClueFlight = {
+  id: string;
+  team: TeamColor;
+  word: string;
+  number: number;
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+};
+
+function FloatingClue({ flight, onComplete }: { flight: ClueFlight; onComplete: (id: string) => void }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) {
+      onComplete(flight.id);
+      return;
+    }
+
+    element.style.opacity = '1';
+    element.style.transform = 'translate(-50%, -50%) scale(1)';
+
+    let cancelled = false;
+    let animation: Animation | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const dispose = () => {
+      cancelled = true;
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
+      if (animation) {
+        animation.cancel();
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      const mediaQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+      if (mediaQuery?.matches) {
+        timeoutId = setTimeout(() => {
+          if (!cancelled) {
+            onComplete(flight.id);
+          }
+        }, 1000);
+
+        return dispose;
+      }
+    }
+
+    const start = () => {
+      const deltaX = flight.endX - flight.startX;
+      const deltaY = flight.endY - flight.startY;
+
+      animation = element.animate(
+        [
+          { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+          { transform: 'translate(-50%, -50%) scale(1.05)', opacity: 0.92, offset: 0.45 },
+          { transform: `translate(-50%, -50%) translate(${deltaX}px, ${deltaY}px) scale(0.9)`, opacity: 0 }
+        ],
+        {
+          duration: 1600,
+          easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)',
+          fill: 'forwards'
+        }
+      );
+
+      animation.onfinish = () => {
+        if (!cancelled) {
+          onComplete(flight.id);
+        }
+      };
+    };
+
+    timeoutId = setTimeout(() => {
+      if (!cancelled) {
+        start();
+      }
+    }, 1000);
+
+    return dispose;
+  }, [flight, onComplete]);
+
+  const teamClasses = flight.team === 'RED'
+    ? 'bg-[#1e0b23]/95 text-[#ffe3ef] border border-[#ff76b2]/55 shadow-[0_0_30px_rgba(255,118,178,0.48)]'
+    : 'bg-[#081625]/95 text-[#e7f8ff] border border-[#7bd6ff]/55 shadow-[0_0_30px_rgba(123,214,255,0.44)]';
+
+  return (
+    <div
+      ref={ref}
+      className={`pointer-events-none fixed z-[120] inline-flex items-center gap-3 rounded-2xl px-6 py-3 font-semibold uppercase tracking-[0.2em] text-base backdrop-blur-md [text-shadow:0_0_10px_rgba(0,0,0,0.45)] ${teamClasses}`}
+      style={{
+        left: `${flight.startX}px`,
+        top: `${flight.startY}px`,
+        transform: 'translate(-50%, -50%)'
+      }}
+    >
+      <span>{flight.word}</span>
+      <span className="text-lg font-bold tracking-[0.18em] text-white/85">{flight.number}</span>
+    </div>
+  );
+}
+
 function CodenamesGame() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [connected, setConnected] = useState(false);
@@ -59,6 +163,13 @@ function CodenamesGame() {
   const websocketRef = useRef<WebSocket | null>(null);
   const lastUserScrollTime = useRef<number>(0);
   const autoScrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const boardContainerRef = useRef<HTMLDivElement | null>(null);
+  const cluePanelRef = useRef<HTMLDivElement | null>(null);
+  const lastClueIdRef = useRef<string | null>(null);
+  const [clueFlight, setClueFlight] = useState<ClueFlight | null>(null);
+  const handleClueFlightComplete = useCallback((id: string) => {
+    setClueFlight((current) => (current && current.id === id ? null : current));
+  }, []);
 
   // Smart auto-scroll that respects user reading
   useEffect(() => {
@@ -399,6 +510,58 @@ function CodenamesGame() {
     return activeGuess;
   }, [finalSummary, displayClue, activeGuess]);
 
+  useLayoutEffect(() => {
+    if (!displayClue) {
+      setClueFlight(null);
+      lastClueIdRef.current = null;
+      return;
+    }
+
+    if (displayClue.id === lastClueIdRef.current) {
+      return;
+    }
+
+    if (typeof window === 'undefined') {
+      lastClueIdRef.current = displayClue.id;
+      return;
+    }
+
+    let frame = 0;
+    const measure = () => {
+      const boardEl = boardContainerRef.current;
+      const clueEl = cluePanelRef.current;
+
+      if (!displayClue) {
+        return;
+      }
+
+      if (!boardEl || !clueEl) {
+        frame = window.requestAnimationFrame(measure);
+        return;
+      }
+
+      const boardRect = boardEl.getBoundingClientRect();
+      const clueRect = clueEl.getBoundingClientRect();
+
+      setClueFlight({
+        id: displayClue.id,
+        team: displayClue.team,
+        word: displayClue.word,
+        number: displayClue.number,
+        startX: boardRect.left + boardRect.width / 2,
+        startY: boardRect.top + boardRect.height / 2,
+        endX: clueRect.left + clueRect.width / 2,
+        endY: clueRect.top + clueRect.height / 2
+      });
+
+      lastClueIdRef.current = displayClue.id;
+    };
+
+    frame = window.requestAnimationFrame(measure);
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [displayClue]);
+
   const cardTeam = finalSummary?.team ?? currentTurnTeam ?? (displayClue?.team ?? activeClue?.team ?? null);
 
   const cardBorderClass = cardTeam === 'RED'
@@ -413,9 +576,15 @@ function CodenamesGame() {
     : cardTeam === 'BLUE'
       ? 'bg-[#0f2334]/80 text-[#e7f8ff] border border-[#7bd6ff]/45 shadow-[0_0_18px_rgba(123,214,255,0.22)]'
       : 'bg-[#181533]/80 text-[#e5e6ff] border border-white/12 shadow-[0_0_15px_rgba(134,126,255,0.18)]';
+  const clueInTransit = Boolean(displayClue && clueFlight && clueFlight.id === displayClue.id);
+  const guessVisible = !clueInTransit ? displayGuess : null;
+  const showAwaitingClue = !displayClue || clueInTransit;
 
   return (
     <div className="min-h-screen text-white/95 p-6 sm:p-8 lg:p-12">
+      {clueFlight && (
+        <FloatingClue flight={clueFlight} onComplete={handleClueFlightComplete} />
+      )}
       <div className="max-w-full mx-auto">
         {/* Header */}
         <div className="mb-4">
@@ -472,7 +641,7 @@ function CodenamesGame() {
             )}
 
             {/* Game Board - Always visible */}
-            <div className="mb-6">
+            <div className="mb-6" ref={boardContainerRef}>
               <CardGrid states={getBoardStates()} />
             </div>
 
@@ -486,40 +655,52 @@ function CodenamesGame() {
 
           {/* Chat Sidebar */}
           <div className="w-96 flex flex-col gap-4">
-            <div className={`rounded-2xl border bg-[#140a2e]/75 backdrop-blur-sm p-4 shadow-[0_0_28px_rgba(72,65,115,0.35)] transition ${cardBorderClass}`}>
-              <div className="flex flex-wrap items-baseline gap-3">
-                {displayClue ? (
-                  <>
-                    <span className={`text-xl font-semibold uppercase tracking-wide ${clueToneClass}`}>
-                      {displayClue.word}
-                    </span>
-                    <span className="text-lg font-semibold text-white/80">{displayClue.number}</span>
-                  </>
-                ) : finalSummary ? (
-                <div className="w-full text-center space-y-2">
-                  {finalSummary.winnerMessage && (
-                    <div className="text-2xl font-bold uppercase tracking-wide text-white">
-                      {finalSummary.winnerMessage}
-                    </div>
-                  )}
-                  {finalSummary.statsMessage && (
-                    <div className="text-sm text-gray-300">
-                      {finalSummary.statsMessage}
-                    </div>
-                  )}
-                </div>
+            <div
+              ref={cluePanelRef}
+              className={`rounded-2xl border bg-[#140a2e]/75 backdrop-blur-sm p-4 shadow-[0_0_28px_rgba(72,65,115,0.35)] transition ${cardBorderClass}`}
+            >
+              <div className="relative min-h-[2.5rem] w-full flex flex-wrap items-center gap-3">
+                {finalSummary ? (
+                  <div className="w-full text-center space-y-2">
+                    {finalSummary.winnerMessage && (
+                      <div className="text-2xl font-bold uppercase tracking-wide text-white">
+                        {finalSummary.winnerMessage}
+                      </div>
+                    )}
+                    {finalSummary.statsMessage && (
+                      <div className="text-sm text-gray-300">
+                        {finalSummary.statsMessage}
+                      </div>
+                    )}
+                  </div>
                 ) : (
-                  <span className={`text-sm ${clueToneClass}`}>Awaiting clue…</span>
+                  <>
+                    <span
+                      className={`absolute left-0 top-1/2 -translate-y-1/2 text-sm ${clueToneClass} transition-opacity duration-700 ease-out ${showAwaitingClue ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                    >
+                      Awaiting clue…
+                    </span>
+                    {displayClue && (
+                      <div
+                        className={`flex items-baseline gap-3 transition-all duration-500 ease-out ${clueInTransit ? 'opacity-0 translate-y-1 pointer-events-none' : 'opacity-100 translate-y-0'} relative z-10`}
+                      >
+                        <span className={`text-xl font-semibold uppercase tracking-wide ${clueToneClass}`}>
+                          {displayClue.word}
+                        </span>
+                        <span className="text-lg font-semibold text-white/90">{displayClue.number}</span>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
               {!finalSummary && (
                 <div className="mt-3">
-                  {displayGuess ? (
+                  {guessVisible ? (
                     <div className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold tracking-wide ${guessChipClass}`}>
-                      {displayGuess.word}
+                      {guessVisible.word}
                     </div>
                   ) : (
-                    <div className="text-sm text-gray-500 italic">No guess yet</div>
+                    <div className="text-xs uppercase tracking-[0.3em] text-white/40">Listening for guesses…</div>
                   )}
                 </div>
               )}
