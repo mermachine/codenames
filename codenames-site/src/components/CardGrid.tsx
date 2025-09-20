@@ -12,7 +12,7 @@ function CardCell({ state }: { state: CardState }) {
   if (state.isRevealed) {
     return <RevealedCard kind={state.kind} />;
   } else {
-    return <WordCard word={state.word} />;
+    return <WordCard word={state.word} kind={state.kind} />;
   }
 }
 
